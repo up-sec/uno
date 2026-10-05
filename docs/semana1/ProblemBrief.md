@@ -55,7 +55,7 @@ El proyecto se desarrolla en modalidad individual. Cada propuesta pasó por seis
 
 | Integrante | Usuario de GitHub | Rol |
 |---|---|---|
-| Ángel Uriel Prado Zamora | `@[COMPLETAR]` | Producto, investigación, desarrollo (contrato, backend y frontend), seguridad y pitch. **Responsable de las entregas.** |
+| Ángel Uriel Prado Zamora | `up-sec` | Producto, investigación, desarrollo (contrato, backend y frontend), seguridad y pitch. **Responsable de las entregas.** |
 
 **Modalidad:** individual. **Canal de coordinación:** Discord del programa.
 
