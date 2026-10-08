@@ -1,0 +1,19 @@
+# Compilación de Rust
+target/
+
+# Llaves, secretos y configuración local: NUNCA al repo
+.stellar/
+.env
+.env.*
+*.key
+*.pem
+secret*
+secreto*
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+
+# macOS
+.DS_Store
