@@ -15,8 +15,10 @@ Proyecto de Ángel Uriel Prado Zamora ([up-sec](https://github.com/up-sec)) para
 
 | Versión | Contract ID | Estado |
 |---|---|---|
-| v1.1 (`version()` = 2) | _pendiente de desplegar_ | Actual: incluye los arreglos de las auditorías y upgrade |
+| v1.1 (`version()` = 2) | [`CCPJ3LQOWC3NAJYV77FO74HKELG7YXJ4ANMSALXKHGIKAJJ6FXFQDMQQ`](https://lab.stellar.org/r/testnet/contract/CCPJ3LQOWC3NAJYV77FO74HKELG7YXJ4ANMSALXKHGIKAJJ6FXFQDMQQ) | Actual: incluye los arreglos de las auditorías y upgrade |
 | v0 | [`CCLD6LE2HLHZZ6SEGNODCYSEV5XWTBQ3JG7Q55GYCRE5QW4AMFTYGLAG`](https://lab.stellar.org/r/testnet/contract/CCLD6LE2HLHZZ6SEGNODCYSEV5XWTBQ3JG7Q55GYCRE5QW4AMFTYGLAG) | Obsoleto; no se puede actualizar porque no tenía upgrade |
+
+Token aprobado en v1.1: **MXNDEMO** ([`CAKQXZLMZBOR5EJNHVJBB7UHYXAHX2JHPES3N7HSMBQUNOJZEKPDW2HZ`](https://lab.stellar.org/r/testnet/contract/CAKQXZLMZBOR5EJNHVJBB7UHYXAHX2JHPES3N7HSMBQUNOJZEKPDW2HZ)).
 
 SDK: soroban-sdk 28.0.0.
 
