@@ -18,6 +18,8 @@ El [Product Blueprint](../semana2/ProductBlueprint.md) define siete historias de
 
 **Inicio (`/`).** Explica en una pantalla la propuesta de valor del Blueprint, "un apoyo, una persona", y los cuatro pasos del flujo: registro, programa, cobro y cierre. Desde ahí cada rol entra a su vista. Las vistas que todavía no funcionan aparecen marcadas como "Próxima semana", para que nadie las confunda con algo terminado. Al pie se enlaza el contrato en el explorador, para que cualquier persona pueda ir a la fuente.
 
+![Inicio: propuesta de valor, cómo funciona y acceso por rol](capturas/01-inicio.png)
+
 **Organización (`/organizacion`) — historia 1.** Atiende a la coordinadora de un programa de becas que "quiere pagar solo a personas que demostraron ser reales y únicas" (paso 5 del flujo de usuario: "crea la beca y deposita los fondos en el contrato"). La pantalla permite:
 
 1. **Conectar la wallet** con Stellar Wallets Kit (Freighter, xBull, Lobstr, Albedo o Hana). Si la wallet está en otra red, la app lo avisa y bloquea la firma.
@@ -28,9 +30,7 @@ El [Product Blueprint](../semana2/ProductBlueprint.md) define siete historias de
 
 La lista de verificadores aceptados conecta directamente con la seguridad del contrato: un programa solo paga a personas registradas por verificadores en los que la organización confía (hallazgo A-01 de la auditoría).
 
-![Organización: el programa #0 quedó creado y confirmado en la red](capturas/01-inicio.png)
-
-![Organización: saldo, registro de la transacción y estado del programa #0](capturas/02-organizacion..png)
+![Organización: saldo, registro de la transacción y estado del programa #0](capturas/02-organizacion.png)
 
 **El programa #0 se creó en testnet desde esta interfaz.** La organización firmó con Freighter un programa de 100 MXNDEMO por persona con cupo de 5, y el contrato tomó los 500 MXNDEMO de su cuenta en la misma transacción: [`220f02548eebd4dec791f5bb8dc71e850525a5c55ff9c9ac6541ea46d13488d9`](https://stellar.expert/explorer/testnet/tx/220f02548eebd4dec791f5bb8dc71e850525a5c55ff9c9ac6541ea46d13488d9), ledger 5198537, 14 de octubre de 2026.
 
@@ -77,7 +77,7 @@ En Windows ajustamos el script de bindings del molde: `rm -f` se cambió por un 
 
 El problema de Uno es detectar a **la misma persona entre organizaciones distintas** que no confían entre sí, sin que ninguna guarde su identidad. Antes de escribir código revisamos lo que ya existe en el ecosistema de Stellar, y ninguna herramienta resuelve eso:
 
-- **Stellar Disbursement Platform (SDP).** Es la herramienta natural para pagar apoyos, pero verifica a cada receptor **dentro de cada organización**. Cada organización opera su propio padrón, así que una persona puede estar dada de alta en dos organizaciones y cobrar en ambas sin que ninguna lo note. No compite con Uno, lo complementa: en el futuro, una organización podría usar SDP para dispersar y consultar a Uno para saber si la persona ya cobró en otro lado.
+- **Stellar Disbursement Platform (SDP).** Es la herramienta natural para pagar apoyos, pero, según la documentación que revisamos, verifica a cada receptor **dentro de cada organización**. Si es así, cada organización opera su propio padrón, y una persona podría estar dada de alta en dos organizaciones y cobrar en ambas sin que ninguna lo note. No compite con Uno, lo complementa: en el futuro, una organización podría usar SDP para dispersar y consultar a Uno para saber si la persona ya cobró en otro lado.
 - **Gobernanza existente (OpenZeppelin Governor, SCF).** Resuelve un problema distinto. Pondera votos por tokens o por reputación, es decir, "cuánto pesa una cuenta", no "si dos cuentas son la misma persona". No ofrece unicidad de personas.
 - **HumanVouch.** Es una demo de hackathon que depende de World ID. Además de no ser un producto mantenido, hereda la verificación biométrica por iris que el Problem Brief y el Blueprint descartan: World ha sido suspendido en varios países y Uno promete verificación presencial sin biometría almacenada.
 
