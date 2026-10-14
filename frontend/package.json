@@ -1,0 +1,33 @@
+{
+  "name": "uno-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "bindings": "stellar contract bindings typescript --network testnet --contract-id CCPJ3LQOWC3NAJYV77FO74HKELG7YXJ4ANMSALXKHGIKAJJ6FXFQDMQQ --output-dir ./packages/uno --overwrite && npm run bindings:clean",
+    "bindings:clean": "cd packages/uno && npm pkg set name=uno exports=./src/index.ts typings=./src/index.ts \"dependencies.@stellar/stellar-sdk=^17.2.1\" && npm pkg delete scripts devDependencies && node -e \"for (const f of ['README.md', 'tsconfig.json', '.gitignore']) require('fs').rmSync(f, { force: true })\"",
+    "postinstall": "patch-package"
+  },
+  "dependencies": {
+    "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.7.1",
+    "@stellar/stellar-sdk": "^17.2.1",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "uno": "file:packages/uno"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "patch-package": "^8.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

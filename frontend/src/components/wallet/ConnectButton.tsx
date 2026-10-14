@@ -1,0 +1,24 @@
+"use client";
+import type { Wallet } from "@/hooks/useWallet";
+import { Dot, GhostButton, PrimaryButton } from "@/components/ui";
+import { shortAddress } from "@/lib/format";
+
+export function ConnectButton({ wallet }: { wallet: Wallet }) {
+  // Mientras restauramos la sesión, no mostramos un botón que "salte".
+  if (!wallet.ready) return <div className="h-10" />;
+
+  if (!wallet.address) {
+    return <PrimaryButton onClick={wallet.connect}>Conectar wallet</PrimaryButton>;
+  }
+
+  const tone = wallet.network === "ok" ? "ok" : wallet.network === "wrong" ? "bad" : "warn";
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex h-9 items-center gap-2 rounded-lg border border-hairline bg-surface px-3 font-mono text-sm">
+        <Dot tone={tone} />
+        {shortAddress(wallet.address)}
+      </span>
+      <GhostButton onClick={wallet.disconnect}>Desconectar</GhostButton>
+    </div>
+  );
+}
