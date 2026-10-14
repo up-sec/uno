@@ -108,7 +108,7 @@ fn flujo_completo() {
     assert_eq!(t.token.balance(&dest), AMOUNT);
     assert_eq!(t.uno.program(&pid).claimed, 1);
     assert!(t.uno.has_claimed(&pid, &h));
-    assert_eq!(t.uno.version(), 1);
+    assert_eq!(t.uno.version(), 2);
 }
 
 #[test]

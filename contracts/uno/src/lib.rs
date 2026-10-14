@@ -35,7 +35,7 @@ const BUMP: u32 = 30 * DAY;
 const THRESHOLD: u32 = BUMP - DAY;
 
 /// Versión del código. Sube cada vez que se hace un upgrade.
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 
 /// Prefijo del mensaje que firma el celular. v2: sin sello, con caducidad.
 const CLAIM_DOMAIN: &[u8] = b"UNO-CLAIM-v2";
