@@ -3,6 +3,20 @@ import { tokenConfig } from "@/config/stellar";
 
 const SCALE = BigInt(10) ** BigInt(tokenConfig.decimals);
 
+/** Límites de los tipos del contrato: cap y program_id son u32; los montos, i128. */
+export const MAX_U32 = 4_294_967_295;
+export const MAX_I128 = (BigInt(1) << BigInt(127)) - BigInt(1);
+
+/**
+ * "12" → 12. Número de programa válido (u32), o null.
+ * Sin tope, un número enorme llegaría al SDK y fallaría con un error genérico.
+ */
+export function parseProgramId(text: string | null): number | null {
+  if (text === null || !/^\d{1,10}$/.test(text.trim())) return null;
+  const id = Number(text);
+  return id <= MAX_U32 ? id : null;
+}
+
 /**
  * "150.5" → 1505000000n (unidades mínimas, 7 decimales).
  * Se hace con texto y bigint: con `number` se pierden centavos por redondeo.
@@ -14,7 +28,7 @@ export function parseAmount(text: string): bigint | null {
   const [, whole, fraction = ""] = match;
   if (fraction.length > tokenConfig.decimals) return null;
   const value = BigInt(whole) * SCALE + BigInt(fraction.padEnd(tokenConfig.decimals, "0"));
-  return value > BigInt(0) ? value : null;
+  return value > BigInt(0) && value <= MAX_I128 ? value : null;
 }
 
 /** 1505000000n → "150.5" */

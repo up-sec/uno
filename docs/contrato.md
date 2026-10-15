@@ -53,6 +53,7 @@ El admin puede actualizar el código sin cambiar el Contract ID. Antes de mainne
 - **13-oct-2026 (v1):** se corrigieron A-02, M-01, M-03, B-01, B-02 y B-03. Ver [2026-10-13-v1.md](auditorias/2026-10-13-v1.md).
 - **14-oct-2026 (v1.1):** M-04 (época por verificador) y B-04 (caducidad de la propuesta de admin) quedan arreglados. A-01 y M-02 siguen **parciales**. Ver [2026-10-14-v1.1.md](auditorias/2026-10-14-v1.1.md).
 - **14-oct-2026 (frontend):** revisión de secretos, variables de entorno y dependencias del frontend. Ver [2026-10-14-frontend.md](auditorias/2026-10-14-frontend.md).
+- **14-oct-2026 (integral):** contrato, frontend y repositorio, sobre el commit `4101c70`. Semáforo 🟢 para la demo en testnet y 🔴 para mainnet. Se verificó que el ejecutable desplegado es el Wasm `9bc704149bbfb80f2b54c5f6243cdf69867ca9b92420997b7d599714b629aaf2`, compilado de este código. Los hallazgos del frontend F-01 a F-05, R-01 y R-02 se corrigieron después; I-05, I-06 e I-15 quedaron documentados abajo. Ver [2026-10-14-integral.md](auditorias/2026-10-14-integral.md).
 
 **Abiertos, bloquean mainnet:**
 - **A-03:** `freeze_upgrades` depende de que el ejecutable vigente sea este código.
@@ -85,6 +86,9 @@ Cubierto por 33 pruebas en [`contracts/uno/src/test.rs`](../contracts/uno/src/te
 ## Limitaciones conocidas
 
 - I-12: dar de baja a un verificador invalida para siempre todas las credenciales que emitió, aunque después se le vuelva a dar de alta. Toda su gente tiene que volver a registrarse en persona. No existe una "pausa" temporal.
+- I-05: la lista de verificadores de un programa se fija al crearlo y no se puede cambiar. Para confiar en un verificador nuevo hay que cerrar el programa y crear otro. El contrato tampoco rechaza verificadores repetidos en la lista (no causa daño, solo ocupa lugar del máximo de 10).
+- I-06: `disallow_token` solo impide crear programas **nuevos** con ese token. Los programas que ya están abiertos siguen pagando y se pueden cerrar con normalidad.
+- I-15: la organización puede cerrar su programa en cualquier momento, incluso si hay personas con un reclamo ya firmado que todavía no se procesa; esos reclamos fallan con `ProgramClosed`. Es una decisión de diseño del piloto. Para producción se evaluará una fecha mínima de cierre fijada al crear el programa o un aviso con tiempo de espera.
 - El secreto del HMAC es el dato más sensible del sistema: vive solo en el backend y **nunca** se sube al repo.
 - M-05: la misma huella y la misma llave del celular se usan en todos los programas, así que con datos públicos se puede ligar la participación de una persona entre programas.
 - El admin y los verificadores son roles de confianza: antes de mainnet el admin debe ser una cuenta multifirma.

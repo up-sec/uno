@@ -7,6 +7,8 @@
 //
 // Todo lo que está aquí es PÚBLICO: termina en el navegador. Nunca llaves.
 // ─────────────────────────────────────────────────────────────────────────────
+import { Networks, StrKey } from "@stellar/stellar-sdk";
+import { networks } from "uno";
 
 // Next reemplaza cada `process.env.NEXT_PUBLIC_...` por su valor al compilar,
 // por eso hay que escribir cada variable completa (no se puede leer dinámicamente).
@@ -24,6 +26,36 @@ for (const [name, value] of Object.entries(env)) {
   if (!value) {
     throw new Error(`Falta ${name}: agrégala en .env.local (local) o en Environment Variables (Vercel)`);
   }
+}
+
+// ── Validación (auditoría integral, F-02) ────────────────────────────────────
+// Las variables NEXT_PUBLIC_ las puede cambiar cualquiera que despliegue una
+// copia. Fallamos al compilar si no tienen sentido, para que un error de
+// configuración no termine en un depósito a otro contrato.
+
+/** Passphrase oficial de cada red: una firma de una red no sirve en otra. */
+const PASSPHRASES: Record<string, string> = { testnet: Networks.TESTNET, mainnet: Networks.PUBLIC };
+
+const expectedPassphrase = PASSPHRASES[env.NEXT_PUBLIC_STELLAR_NETWORK!];
+if (!expectedPassphrase) {
+  throw new Error(`NEXT_PUBLIC_STELLAR_NETWORK="${env.NEXT_PUBLIC_STELLAR_NETWORK}" no es una red conocida (testnet o mainnet)`);
+}
+if (env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE !== expectedPassphrase) {
+  throw new Error(`NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE no corresponde a la red ${env.NEXT_PUBLIC_STELLAR_NETWORK}`);
+}
+if (!StrKey.isValidContract(env.NEXT_PUBLIC_UNO_CONTRACT_ID!) || !StrKey.isValidContract(env.NEXT_PUBLIC_MXNDEMO_TOKEN_ID!)) {
+  throw new Error("NEXT_PUBLIC_UNO_CONTRACT_ID y NEXT_PUBLIC_MXNDEMO_TOKEN_ID deben ser direcciones de contrato (C…) válidas");
+}
+if (!StrKey.isValidEd25519PublicKey(env.NEXT_PUBLIC_DEFAULT_VERIFIER!)) {
+  throw new Error("NEXT_PUBLIC_DEFAULT_VERIFIER debe ser una dirección pública (G…) válida");
+}
+// Los bindings (packages/uno) se generaron desde el contrato desplegado y traen
+// su ID. En testnet, la variable tiene que coincidir con ese ID.
+if (env.NEXT_PUBLIC_STELLAR_NETWORK === "testnet" && env.NEXT_PUBLIC_UNO_CONTRACT_ID !== networks.testnet.contractId) {
+  throw new Error(
+    `NEXT_PUBLIC_UNO_CONTRACT_ID no coincide con el contrato de los bindings (${networks.testnet.contractId}). ` +
+      "Si se desplegó un contrato nuevo, regenera los bindings con npm run bindings.",
+  );
 }
 
 export const stellarConfig = Object.freeze({

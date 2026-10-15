@@ -5,10 +5,11 @@
 // errores salen. No sabe nada de React, así que se puede usar desde un hook,
 // un script o un test.
 // ─────────────────────────────────────────────────────────────────────────────
-import { rpc } from "@stellar/stellar-sdk";
+import { rpc, type contract } from "@stellar/stellar-sdk";
 import type { Program } from "uno";
 import { explorerTxUrl } from "@/config/stellar";
 import { getUnoClient } from "@/lib/contracts/uno.client";
+import { getRpcServer } from "@/lib/contracts/rpc";
 import { TxError } from "./errors";
 
 export type { Program };
@@ -31,11 +32,15 @@ export async function readProgram(programId: number): Promise<Program> {
 }
 
 // ── Escritura ────────────────────────────────────────────────────────────────
-// Crear un programa cambia el estado de la blockchain (y mueve dinero), así que
-// hace falta una transacción FIRMADA. El ciclo completo:
+// Crear o cerrar un programa mueve dinero, así que hace falta una transacción
+// FIRMADA. El ciclo completo:
 //
 //   1. construir → 2. simular → 3. firmar → 4. enviar → 5. esperar confirmación
-//   └─ client.create_program() ─┘ └───────── tx.signAndSend() ─────────┘
+//   └─ client.create_program() ─┘ └ tx.sign() ┘ └────── tx.send() ──────┘
+//
+// Firmamos y enviamos por separado (no con signAndSend) para conocer el hash
+// ANTES de enviar: si después la red no confirma a tiempo, la app puede revisar
+// esa transacción en lugar de pedir otra firma (auditoría integral, F-01).
 
 /** Los pasos intermedios del ciclo de escritura, en orden. */
 export type TxStep = "simulando" | "esperando-firma" | "enviando";
@@ -51,6 +56,47 @@ export type TxOptions = {
   onStep: (step: TxStep) => void; // para mostrar el avance en la interfaz
 };
 
+/** Una transacción confirmada en la red y el valor que devolvió el contrato. */
+export type Confirmed<T> = { value: T; hash: string; explorerUrl: string };
+
+/** Lo que devuelven los métodos de los bindings que regresan Result<T>. */
+type ResultTx<T> = contract.AssembledTransaction<contract.Result<T>>;
+
+/** Pasos 3 a 5, iguales para cualquier escritura. `tx` ya viene simulada. */
+async function signAndSubmit<T>(tx: ResultTx<T>, signer: string, { sign, onStep }: TxOptions): Promise<Confirmed<T>> {
+  // Si va a fallar (token no aprobado, sin saldo, programa ajeno…) nos enteramos
+  // en la simulación, sin pedir firma ni gastar nada.
+  if (rpc.Api.isSimulationError(tx.simulation!)) {
+    throw new TxError("simulation", tx.simulation.error);
+  }
+
+  onStep("esperando-firma");
+  await tx.sign({ signTransaction: (xdr) => sign(xdr, signer) });
+  const signed = tx.signed!;
+  // El hash ya existe aunque no se haya enviado: es el mismo que verá el explorador.
+  const hash = Array.from(signed.hash(), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const maxTime = Number(signed.timeBounds?.maxTime ?? 0);
+  const validUntil = maxTime > 0 ? maxTime : undefined; // después de esto la red ya no la acepta
+
+  // De aquí en adelante la transacción firmada puede llegar a la red. Ante
+  // cualquier duda NO se reintenta: se revisa su estado con el hash.
+  onStep("enviando");
+  let sent: contract.SentTransaction<contract.Result<T>>;
+  try {
+    sent = await tx.send();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // La red respondió que NO la aceptó (ERROR / TRY_AGAIN_LATER): es definitivo.
+    if (/"status":\s*"(ERROR|TRY_AGAIN_LATER)"/.test(message)) throw new TxError("rejected", message, hash);
+    throw new TxError("pending", message, hash, validUntil);
+  }
+
+  if (sent.getTransactionResponse?.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
+    throw new TxError("failed", "La transacción falló en la red", hash);
+  }
+  return { value: sent.result.unwrap(), hash, explorerUrl: explorerTxUrl(hash) };
+}
+
 export type CreateProgramParams = {
   org: string; // la organización: firma y deposita
   token: string;
@@ -59,39 +105,60 @@ export type CreateProgramParams = {
   verifiers: string[]; // verificadores (Punto Uno) en los que confía la organización
 };
 
-export type CreateProgramResult = { programId: number; hash: string; explorerUrl: string };
-
-export async function createProgram(
-  { org, token, amount, cap, verifiers }: CreateProgramParams,
-  { sign, onStep }: TxOptions,
-): Promise<CreateProgramResult> {
-  // 1 + 2. CONSTRUIR y SIMULAR. Si va a fallar (token no aprobado, sin saldo,
-  // verificador dado de baja…) nos enteramos AQUÍ, sin pedir firma ni gastar nada.
-  onStep("simulando");
-  const client = getUnoClient(org); // la organización paga la comisión y firma
-  const tx = await client.create_program({ org, token, amount, cap, verifiers }, { timeoutInSeconds: 30 });
-  if (rpc.Api.isSimulationError(tx.simulation!)) {
-    throw new TxError("simulation", tx.simulation.error);
-  }
-
-  // 3 + 4 + 5. FIRMAR, ENVIAR y ESPERAR CONFIRMACIÓN.
-  // La wallet le muestra a la organización que el contrato va a mover
-  // amount × cap de su cuenta: es la autorización del depósito.
-  onStep("esperando-firma");
-  const sent = await tx.signAndSend({
-    signTransaction: async (xdr) => {
-      const signed = await sign(xdr, org);
-      onStep("enviando");
-      return signed;
-    },
-  });
-
-  // "Enviada" no es "confirmada": signAndSend espera el resultado del ledger.
-  const hash = sent.sendTransactionResponse?.hash ?? "";
-  if (sent.getTransactionResponse?.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-    throw new TxError("failed", "La transacción falló en la red", hash);
-  }
-  // create_program devuelve Result<u32>: el número del programa nuevo.
-  const programId = sent.result.unwrap();
-  return { programId, hash, explorerUrl: explorerTxUrl(hash) };
+/**
+ * Crea un programa. Al firmar, Freighter muestra la llamada `create_program`
+ * con sus argumentos en unidades mínimas (amount = monto × 10^7); por eso la
+ * interfaz muestra esa equivalencia ANTES de abrir la wallet.
+ * Devuelve el número del programa nuevo.
+ */
+export async function createProgram(params: CreateProgramParams, options: TxOptions): Promise<Confirmed<number>> {
+  options.onStep("simulando");
+  const tx = await getUnoClient(params.org).create_program(params, { timeoutInSeconds: 30 });
+  return signAndSubmit(tx, params.org, options);
 }
+
+/**
+ * Cierra un programa: el contrato le regresa a la organización lo que no se
+ * cobró y ya nadie puede cobrar en él. Solo la organización que lo creó puede
+ * cerrarlo. Devuelve el monto recuperado, en unidades mínimas.
+ */
+export async function closeProgram({ org, programId }: { org: string; programId: number }, options: TxOptions): Promise<Confirmed<bigint>> {
+  options.onStep("simulando");
+  const tx = await getUnoClient(org).close_program({ program_id: programId }, { timeoutInSeconds: 30 });
+  return signAndSubmit(tx, org, options);
+}
+
+// ── Revisar una transacción ya enviada ───────────────────────────────────────
+
+export type TxCheck<T> =
+  | { status: "confirmada"; value: T } // entró y el contrato respondió
+  | { status: "fallida" } // entró, pero falló: no se movió dinero
+  | { status: "pendiente" } // todavía no aparece y aún podría entrar
+  | { status: "no-llego" }; // no aparece y ya caducó: nunca va a entrar
+
+/**
+ * Estado real de una transacción enviada. `method` es la función del contrato
+ * que se llamó, para traducir lo que devolvió.
+ *
+ * Toda transacción de la app caduca a los 30 s (timeoutInSeconds). Si después
+ * de eso la red no la conoce, ya no puede entrar y es seguro intentar de nuevo.
+ */
+export async function checkTransaction<T>(
+  method: "create_program" | "close_program",
+  hash: string,
+  validUntil: number | undefined, // segundos Unix; undefined = no sabemos, nunca se da por perdida
+): Promise<TxCheck<T>> {
+  const response = await getRpcServer().getTransaction(hash);
+  if (response.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+    const result = getUnoClient().spec.funcResToNative(method, response.returnValue!) as contract.Result<T>;
+    return { status: "confirmada", value: result.unwrap() };
+  }
+  if (response.status === rpc.Api.GetTransactionStatus.FAILED) return { status: "fallida" };
+
+  // NOT_FOUND: ¿todavía puede entrar? Lo sabemos por la caducidad que se firmó.
+  // Damos 60 s de margen por si el reloj de esta computadora está desfasado.
+  const now = Date.now() / 1000;
+  return validUntil !== undefined && now > validUntil + CLOCK_MARGIN_S ? { status: "no-llego" } : { status: "pendiente" };
+}
+
+const CLOCK_MARGIN_S = 60;

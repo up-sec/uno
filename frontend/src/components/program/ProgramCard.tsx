@@ -28,9 +28,11 @@ export function ProgramDetails({ programId, program }: { programId: number; prog
   const symbol = program.token === tokenConfig.id ? tokenConfig.symbol : "";
   const amount = BigInt(program.amount);
   const remainingPeople = program.cap - program.claimed;
-  // Mientras está abierto, el contrato guarda lo que falta por cobrar.
+  // Mientras está abierto, el programa tiene reservado lo que falta por cobrar.
   // Al cerrarse, ese sobrante regresó a la organización.
-  const inCustody = program.open ? amount * BigInt(remainingPeople) : BigInt(0);
+  // Es un CÁLCULO (monto × cobros pendientes), no el saldo real del contrato:
+  // el saldo del token es uno solo para todos los programas (F-04).
+  const reserved = program.open ? amount * BigInt(remainingPeople) : BigInt(0);
   const percent = program.cap === 0 ? 0 : Math.round((program.claimed / program.cap) * 100);
 
   return (
@@ -44,9 +46,9 @@ export function ProgramDetails({ programId, program }: { programId: number; prog
         <Stat label="Por persona" value={`${formatAmount(amount)} ${symbol}`} />
         <Stat label="Cobros" value={`${program.claimed} / ${program.cap}`} sub={`${percent}% del cupo`} />
         <Stat
-          label="En el contrato"
-          value={`${formatAmount(inCustody)} ${symbol}`}
-          sub={program.open ? `${remainingPeople} cobros pendientes` : "sobrante devuelto"}
+          label="Reservado para cobros (calculado)"
+          value={`${formatAmount(reserved)} ${symbol}`}
+          sub={program.open ? `monto × ${remainingPeople} cobros pendientes` : "cerrado: el sobrante se devolvió"}
         />
       </div>
 

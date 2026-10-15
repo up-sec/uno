@@ -12,13 +12,15 @@ export type TxErrorKind =
   | "network" // la wallet está en otra red
   | "rejected" // la red no aceptó la transacción al enviarla
   | "failed" // la red la aceptó, pero falló al ejecutarse
-  | "timeout"; // no llegó la confirmación a tiempo
+  | "timeout" // no llegó la confirmación a tiempo
+  | "pending"; // ya se firmó y se envió, pero no sabemos si entró: NO reintentar a ciegas
 
 export class TxError extends Error {
   constructor(
     public kind: TxErrorKind,
     message: string,
     public hash?: string, // si ya fue enviada, para verla en el explorador
+    public validUntil?: number, // "pending": hasta cuándo puede entrar (segundos Unix)
   ) {
     super(message);
   }
@@ -27,7 +29,9 @@ export class TxError extends Error {
 export type FriendlyError = {
   title: string;
   message: string;
-  action?: "retry" | "friendbot"; // botón que ofrecemos para resolverlo
+  action?: "retry" | "friendbot" | "check"; // botón que ofrecemos para resolverlo
+  hash?: string; // si ya fue enviada
+  validUntil?: number; // "check": hasta cuándo puede entrar todavía
   explorerUrl?: string; // si ya fue enviada, para verla en el explorador
   detail: string; // texto técnico original
 };
@@ -69,6 +73,19 @@ export function mapError(error: unknown): FriendlyError {
   // SEP-43: las wallets usan el código -4 cuando el usuario rechaza.
   const code = typeof error === "object" && error && "code" in error ? error.code : undefined;
 
+  // Va primero: con la transacción ya enviada, reintentar podría crear un
+  // segundo programa y un segundo depósito (auditoría integral, F-01).
+  if (kind === "pending")
+    return {
+      title: "No sabemos todavía si la transacción entró",
+      message: "Ya se firmó y se envió, pero la red no confirmó a tiempo. No la firmes otra vez: revisa su estado.",
+      action: "check",
+      hash,
+      validUntil: error instanceof TxError ? error.validUntil : undefined,
+      explorerUrl,
+      detail,
+    };
+
   if (code === -4 || has(/reject|declin|denied|cancel/i))
     return { title: "Firma cancelada", message: "Cancelaste la firma en tu wallet.", action: "retry", detail };
 
@@ -96,8 +113,9 @@ export function mapError(error: unknown): FriendlyError {
   if (kind === "timeout" || has(/timeout|timed out|Waited \d+ seconds|Failed to fetch|Network Error|ECONN|50[234]/i))
     return { title: "La red no respondió", message: "El nodo RPC tardó demasiado o no está disponible. Prueba de nuevo en unos segundos.", action: "retry", explorerUrl, detail };
 
+  // "failed" es definitivo: la red la procesó y falló, así que no se movió dinero.
   if (kind === "failed" || kind === "rejected")
-    return { title: "La red rechazó la transacción", message: "La transacción no se pudo ejecutar.", action: "retry", explorerUrl, detail };
+    return { title: "La red rechazó la transacción", message: "La transacción no se pudo ejecutar y no se movió dinero.", action: "retry", hash, explorerUrl, detail };
 
   return { title: "Algo salió mal", message: "Ocurrió un error inesperado.", action: "retry", detail };
 }

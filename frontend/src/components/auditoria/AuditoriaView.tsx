@@ -5,13 +5,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { explorerAccountUrl, stellarConfig } from "@/config/stellar";
 import { useProgram } from "@/hooks/useProgram";
+import { parseProgramId } from "@/lib/format";
 import { PageShell } from "@/components/layout/SiteHeader";
 import { ProgramCard } from "@/components/program/ProgramCard";
 import { Field, PrimaryButton, TextInput } from "@/components/ui";
-
-function parseProgramId(text: string | null): number | null {
-  return text !== null && /^\d+$/.test(text.trim()) ? Number(text) : null;
-}
 
 export function AuditoriaView() {
   const searchParams = useSearchParams();
@@ -43,7 +40,7 @@ export function AuditoriaView() {
 
       <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-5" noValidate>
         <div className="min-w-40 flex-1">
-          <Field label="Número de programa" error={invalid ? "Escribe un número entero (los programas empiezan en 0)." : null} hint="Los programas se numeran desde 0.">
+          <Field label="Número de programa" error={invalid ? "Escribe un número entero de 0 a 4,294,967,295 (los programas empiezan en 0)." : null} hint="Los programas se numeran desde 0.">
             <TextInput inputMode="numeric" placeholder="0" value={text} onChange={(e) => setText(e.target.value)} />
           </Field>
         </div>

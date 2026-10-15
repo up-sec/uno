@@ -22,11 +22,12 @@ El [Product Blueprint](../semana2/ProductBlueprint.md) define siete historias de
 
 **Organización (`/organizacion`) — historia 1.** Atiende a la coordinadora de un programa de becas que "quiere pagar solo a personas que demostraron ser reales y únicas" (paso 5 del flujo de usuario: "crea la beca y deposita los fondos en el contrato"). La pantalla permite:
 
-1. **Conectar la wallet** con Stellar Wallets Kit (Freighter, xBull, Lobstr, Albedo o Hana). Si la wallet está en otra red, la app lo avisa y bloquea la firma.
+1. **Conectar la wallet** con Stellar Wallets Kit (Freighter, xBull, Lobstr, Albedo o Hana). Si la wallet informa que está en otra red (Freighter lo hace), la app lo avisa y bloquea la firma. Si la wallet no informa su red, la app solo avisa; aun así, la firma se hace con la passphrase de Testnet y no serviría en otra red.
 2. **Ver su saldo de MXNDEMO** antes de firmar. Si a la cuenta le falta la trustline al activo, lo dice en lugar de dejar que la transacción falle.
-3. **Crear un programa** con el token MXNDEMO fijo, el monto por persona, el cupo y la lista de verificadores aceptados. El verificador de la CLI viene precargado. La app calcula el total a depositar (monto × cupo) y no deja firmar si el saldo no alcanza.
-4. **Seguir la transacción** paso a paso: preparar (construir y simular), esperar la firma, enviar y confirmar. Si la simulación falla, por ejemplo por un token no aprobado o una cuenta sin trustline, el error aparece en lenguaje claro **antes** de pedir la firma, sin gastar comisiones.
-5. **Ver el estado del programa**: monto por persona, cobros contra cupo, dinero que sigue en el contrato y verificadores en los que confía.
+3. **Crear un programa** con el token MXNDEMO fijo, el monto por persona, el cupo y la lista de verificadores aceptados. El verificador de la CLI viene precargado. La app calcula el total a depositar (monto × cupo) y, cuando ya leyó el saldo, no deja firmar si no alcanza; si no pudo leerlo, decide la simulación del contrato. Antes de abrir Freighter muestra una confirmación con el contrato de destino y los argumentos tal como los verá la wallet (por ejemplo, amount = 1000000000 son 100 MXNDEMO con 7 decimales).
+4. **Seguir la transacción** paso a paso: preparar (construir y simular), esperar la firma, enviar y confirmar. Si la simulación falla, por ejemplo por un token no aprobado o una cuenta sin trustline, el error aparece en lenguaje claro **antes** de pedir la firma, sin gastar comisiones. Si la red no confirma a tiempo después de enviar, la app no ofrece "Reintentar" (podría crear un segundo programa): muestra el hash y un botón "Revisar estado".
+5. **Ver el estado del programa**: monto por persona, cobros contra cupo, lo reservado para cobros (calculado) y verificadores en los que confía.
+6. **Cerrar el programa** (solo la organización dueña y solo si sigue abierto): la app muestra cuánto se recupera y pide confirmación antes de firmar.
 
 La lista de verificadores aceptados conecta directamente con la seguridad del contrato: un programa solo paga a personas registradas por verificadores en los que la organización confía (hallazgo A-01 de la auditoría).
 
@@ -89,8 +90,8 @@ El problema de Uno es detectar a **la misma persona entre organizaciones distint
 
 **Cómo se apoya en el uso de Stellar definido en el Blueprint (sección 8):**
 
-- **Contratos Soroban:** aplican las reglas de registro, unicidad, programas y pagos con código que ningún participante controla.
-- **Almacenamiento y eventos del contrato:** son el registro compartido e inalterable de huellas, cobros y revocaciones que cualquier auditor consulta. La pantalla de auditoría pública es la prueba.
+- **Contratos Soroban:** aplican las reglas de registro, unicidad, programas y pagos con código que ningún participante puede saltarse. Durante el piloto en testnet, el admin todavía puede actualizar el contrato; antes de mainnet se congela con `freeze_upgrades` o pasa a un admin multifirma con timelock (A-03 y A-04).
+- **Almacenamiento y eventos del contrato:** son el registro compartido de huellas, cobros y revocaciones que cualquier auditor consulta. La pantalla de auditoría pública es la prueba.
 - **Stellar Asset Contract:** permite fondear y pagar con MXNDEMO sin escribir un token propio.
 - **Fee bump y testnet con Friendbot:** completan el diseño. El relayer pagará las comisiones del beneficiario.
 

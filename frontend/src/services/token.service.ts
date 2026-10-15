@@ -8,15 +8,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { Account, Address, Contract, TransactionBuilder, rpc, scValToNative } from "@stellar/stellar-sdk";
 import { stellarConfig, tokenConfig } from "@/config/stellar";
+import { getRpcServer } from "@/lib/contracts/rpc";
 
 /** Cuenta "nula" para simular: leer no necesita una cuenta real (igual que los bindings). */
 const SIMULATION_SOURCE = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
-
-let server: rpc.Server | null = null;
-function getServer(): rpc.Server {
-  server ??= new rpc.Server(stellarConfig.rpcUrl);
-  return server;
-}
 
 /** sin-trustline = la cuenta todavía no acepta el activo; no puede recibirlo ni tenerlo. */
 export type TokenBalance = { status: "ok"; units: bigint } | { status: "sin-trustline" };
@@ -31,7 +26,7 @@ export async function readTokenBalance(address: string): Promise<TokenBalance> {
     .setTimeout(30)
     .build();
 
-  const simulation = await getServer().simulateTransaction(tx);
+  const simulation = await getRpcServer().simulateTransaction(tx);
   if (rpc.Api.isSimulationError(simulation)) {
     // El SAC responde Error(Contract, #13) si la cuenta no tiene trustline al
     // activo (o si la cuenta ni siquiera existe todavía).

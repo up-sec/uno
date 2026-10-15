@@ -6,14 +6,15 @@ import { useMyPrograms } from "@/hooks/useMyPrograms";
 import { useProgram } from "@/hooks/useProgram";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useWallet } from "@/hooks/useWallet";
-import { formatAmount } from "@/lib/format";
+import { formatAmount, parseProgramId } from "@/lib/format";
 import { PageShell } from "@/components/layout/SiteHeader";
 import { ProgramCard } from "@/components/program/ProgramCard";
 import { TxStatus } from "@/components/tx/TxStatus";
 import { Dot, GhostButton, TextInput } from "@/components/ui";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { NetworkBanner } from "@/components/wallet/NetworkBanner";
-import type { CreateProgramResult } from "@/services/uno.service";
+import type { Confirmed } from "@/services/uno.service";
+import { CloseProgramPanel } from "./CloseProgramPanel";
 import { CreateProgramForm } from "./CreateProgramForm";
 
 export function OrganizacionView() {
@@ -26,7 +27,7 @@ export function OrganizacionView() {
 
   const { add } = myPrograms;
   const onConfirmed = useCallback(
-    ({ programId }: CreateProgramResult) => {
+    ({ value: programId }: Confirmed<number>) => {
       add(programId);
       setSelected(programId);
       refreshBalance(); // el depósito bajó el saldo
@@ -34,6 +35,13 @@ export function OrganizacionView() {
     [add, refreshBalance],
   );
   const tx = useCreateProgram(onConfirmed);
+
+  const { refresh: refreshProgram } = program;
+  const onClosed = useCallback(() => {
+    refreshProgram(); // ahora aparece como cerrado
+    refreshBalance(); // regresó el sobrante
+  }, [refreshProgram, refreshBalance]);
+  const wrongNetwork = wallet.network === "wrong";
 
   return (
     <PageShell header={<ConnectButton wallet={wallet} />}>
@@ -58,11 +66,19 @@ export function OrganizacionView() {
             <CreateProgramForm
               org={wallet.address}
               balance={balance}
-              disabled={isBusy(tx.state) || wallet.network === "wrong"}
+              disabled={isBusy(tx.state) || wrongNetwork}
               onSubmit={tx.run}
             />
           ) : (
-            <TxStatus state={tx.state} onReset={tx.reset} onRetry={tx.retry} onFund={wallet.fund} />
+            <TxStatus
+              state={tx.state}
+              labels={{ log: "programa.log", done: "Programa creado", doneDetail: "depósito en el contrato" }}
+              success={(r) => `Programa #${r.value} creado`}
+              onReset={tx.reset}
+              onRetry={tx.retry}
+              onCheck={tx.check}
+              onFund={wallet.fund}
+            />
           )}
 
           <section className="space-y-4">
@@ -76,7 +92,21 @@ export function OrganizacionView() {
             {shownId === null ? (
               <p className="card p-5 text-sm text-muted">Todavía no has creado programas desde este navegador. Escribe un número para consultarlo.</p>
             ) : (
-              <ProgramCard programId={shownId} state={program.state} onRefresh={program.refresh} />
+              <>
+                <ProgramCard programId={shownId} state={program.state} onRefresh={program.refresh} />
+                {/* Solo la organización dueña puede cerrar, y solo si sigue abierto. */}
+                {program.state.status === "ok" && program.state.program.open && program.state.program.org === wallet.address && (
+                  <CloseProgramPanel
+                    key={shownId}
+                    programId={shownId}
+                    program={program.state.program}
+                    org={wallet.address}
+                    disabled={wrongNetwork}
+                    onClosed={onClosed}
+                    onFund={wallet.fund}
+                  />
+                )}
+              </>
             )}
           </section>
         </>
@@ -117,9 +147,12 @@ function BalanceCard({ balance, onRefresh }: { balance: ReturnType<typeof useTok
 /** Atajos a los programas creados aquí + campo para consultar cualquier número. */
 function ProgramPicker({ ids, current, onPick }: { ids: number[]; current: number | null; onPick: (id: number) => void }) {
   const [text, setText] = useState("");
+  const [invalid, setInvalid] = useState(false);
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (/^\d+$/.test(text.trim())) onPick(Number(text));
+    const id = parseProgramId(text);
+    setInvalid(id === null);
+    if (id !== null) onPick(id);
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -136,6 +169,7 @@ function ProgramPicker({ ids, current, onPick }: { ids: number[]; current: numbe
         <TextInput aria-label="Número de programa" inputMode="numeric" placeholder="#" value={text} onChange={(e) => setText(e.target.value)} className="h-9 w-20" />
         <GhostButton type="submit">Ver</GhostButton>
       </form>
+      {invalid && <p role="alert" className="w-full text-xs text-bad">Escribe un número de programa válido: entero de 0 a 4,294,967,295.</p>}
     </div>
   );
 }
