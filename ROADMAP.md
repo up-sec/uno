@@ -16,19 +16,19 @@ Personajes ficticios del demo:
 
 | Paso | Qué pasa (para contarlo) | Qué pasa por dentro |
 |---|---|---|
-| 1. Descarga | María abre la app Uno. La app le crea una "llave" que solo existe en su celular. | Se genera un par de llaves post-cuánticas en el dispositivo. La llave privada nunca sale del celular. |
+| 1. Descarga | María abre la app Uno. La app le crea una "llave" que solo existe en su celular. | Se genera un par de llaves Ed25519 en el dispositivo; pasarlas a post-cuánticas es el plan de ADR-001 (pendiente). La llave privada nunca sale del celular. |
 | 2. Verificación única | María va a un Punto Uno con su INE. El operador confirma que es ella, en persona, y que no se había registrado antes. | El backend del verificador calcula una **huella de unicidad** a partir de la CURP y revisa en Stellar que no exista. |
-| 3. Credencial | El operador aprueba y María recibe su credencial en el celular. Sus datos se borran del Punto Uno. | El verificador firma la credencial con **ML-DSA (FIPS 204)**. En Stellar solo queda: huella de unicidad + llave pública de María + quién la verificó + estado "activa". Ningún nombre, CURP ni foto. |
+| 3. Credencial | El operador aprueba y María recibe su credencial en el celular. Sus datos se borran del Punto Uno. | El verificador llama `issue(verifier, huella, holder)` en el contrato. Firmar la credencial con **ML-DSA (FIPS 204)** es plan futuro (ADR-001, pendiente). En Stellar solo queda: huella de unicidad + llave pública de María + quién la verificó + estado "activa". Ningún nombre, CURP ni foto. |
 | 4. Programa | La Fundación crea su programa en Uno: "Apoyo escolar, $1,000, 500 lugares" y deposita los fondos. | La organización llama al contrato `create_program` y deposita el token del demo en el contrato. |
-| 5. Cobro | María escanea el QR del programa y toca "Reclamar". En segundos le llegan $1,000. | La app genera un **sello** = hash(secreto de María + id del programa) y lo firma. El contrato verifica: credencial activa, firma válida y sello no usado; entonces paga. |
-| 6. Doble cobro | María intenta cobrar otra vez: **rechazado**. | El sello de ese programa ya está marcado como usado. |
+| 5. Cobro | María escanea el QR del programa y toca "Reclamar". En segundos le llegan $1,000. | La app firma `claim_message`: programa, cuenta destino y una caducidad por ledger (`expires_ledger`, máximo ~1 día). El contrato verifica: reclamo no caducado, credencial activa, verificador aceptado por el programa, que la huella no haya cobrado y firma válida; entonces paga. |
+| 6. Doble cobro | María intenta cobrar otra vez: **rechazado**. | El contrato ya anotó `Claimed(programa, huella)`: aunque firme un reclamo nuevo con otra caducidad, se rechaza. |
 | 7. Suplantación | El atacante tiene la INE de María, pero no su celular: **rechazado**. | Sin la llave privada no puede generar una firma válida. |
-| 8. Modo Día Q | Simulamos que una computadora cuántica rompe la criptografía clásica. Una identidad con firma clásica es suplantada; la de María, no. | La credencial clásica (Ed25519) se falsifica en la simulación; la post-cuántica rechaza la firma falsa. |
+| 8. Modo Día Q | Simulamos que una computadora cuántica rompe la criptografía clásica. Una identidad con firma clásica es suplantada; la de María, no. | Depende de ADR-001 (pendiente): hoy el contrato solo verifica Ed25519. En la simulación, la credencial clásica se falsifica y la post-cuántica rechaza la firma falsa. |
 | 9. Auditoría | La Fundación ve: 500 pagos a 500 personas únicas, cero datos personales guardados. Cualquier auditor lo comprueba en el explorador de Stellar. | Lectura pública de eventos del contrato. |
 
 **Si María pierde su celular:** regresa a un Punto Uno, se verifica otra vez, la credencial anterior se revoca y la nueva queda ligada a la misma huella de unicidad.
 
-**La frase para explicarlo:** *"En World escaneabas tu iris para demostrar que eres humano. En Uno te verificas una sola vez en persona, tu prueba vive en tu celular y nadie se queda con tu cara. Y está protegida contra las computadoras cuánticas."*
+**La frase para explicarlo:** *"En World escaneabas tu iris para demostrar que eres humano. En Uno te verificas una sola vez en persona, tu prueba vive en tu celular y nadie se queda con tu cara. Y la diseñamos para resistir a las computadoras cuánticas."* (La firma post-cuántica es plan futuro: ADR-001, pendiente.)
 
 ---
 
@@ -89,7 +89,7 @@ flowchart LR
 
 ## 3. Decisión técnica clave: verificación post-cuántica
 
-Se resuelve en un **spike de 1 día** al inicio de la Semana 3.
+**Pendiente, después del Demo Day.** Se resuelve en un spike de 1 día. Mientras tanto, la firma del titular es Ed25519 y está aislada en una sola función del contrato (`verificar_firma_titular`), así que el cambio solo toca esa función.
 
 | Opción | Cómo | Cuándo usarla |
 |---|---|---|
@@ -97,7 +97,7 @@ Se resuelve en un **spike de 1 día** al inicio de la Semana 3.
 | **B** | Firmas basadas en hash (WOTS/Lamport) verificadas en el contrato con SHA-256, que Soroban ya tiene | Si A no está disponible y cabe en el presupuesto de cómputo |
 | **C** | Firma híbrida: Ed25519 verificada en la cadena + ML-DSA verificada por el backend, que deja constancia en el contrato | Plan de respaldo para no frenar el demo |
 
-**Criterio:** la opción más alta en la tabla que funcione en testnet dentro del límite de cómputo de una transacción. Se documenta en `docs/decisiones/ADR-001-firmas-pq.md`.
+**Criterio:** la opción más alta en la tabla que funcione en testnet dentro del límite de cómputo de una transacción. Se documentará en `docs/decisiones/ADR-001-firmas-pq.md` (todavía no existe).
 
 ---
 
@@ -108,22 +108,28 @@ Se resuelve en un **spike de 1 día** al inicio de la Semana 3.
 | Amenaza | Ejemplo | Mitigación |
 |---|---|---|
 | Doble registro (Sybil) | Una persona saca dos credenciales | Huella de unicidad única por persona en el contrato |
-| Doble cobro | Cobrar dos veces el mismo programa | Sello por programa marcado como usado |
+| Doble cobro | Cobrar dos veces el mismo programa | `Claimed(programa, huella)`: cada huella cobra una vez por programa, aunque se reemita su credencial |
 | Suplantación | Alguien con la INE de María intenta cobrar | Se exige firma con la llave que solo vive en su celular |
-| Repetición (replay) | Reenviar una firma válida para cobrar a otra cuenta | La firma cubre id del programa + sello + cuenta de pago |
+| Repetición (replay) | Reenviar una firma válida para cobrar a otra cuenta | La firma cubre contrato + id del programa + `expires_ledger` + cuenta de pago, y el reclamo caduca en máximo ~1 día |
 | Verificador corrupto | Un Punto Uno emite credenciales falsas | Cada credencial registra quién la emitió; revocación masiva por verificador |
 | Robo del celular | Usan la app de María | Desbloqueo local (PIN o biometría del sistema) + revocación |
 | Ataque a la huella de unicidad | Intentar adivinar CURPs para saber quién está registrado | La huella usa un secreto del sistema (HMAC), no un hash simple de la CURP; en el MVP, el secreto vive en el backend del verificador |
-| Cosecha ahora, descifra después | Guardar datos hoy y romperlos con computación cuántica | Firmas post-cuánticas y cero datos personales en la cadena |
-| Fuga de secretos | Llaves en el repo | `.env` fuera de git, revisión con `gitleaks` antes de cada entrega |
+| Cosecha ahora, descifra después | Guardar datos hoy y romperlos con computación cuántica | Cero datos personales en la cadena; firmas post-cuánticas pendientes (ADR-001) |
+| Fuga de secretos | Llaves en el repo | `.env` y `.stellar/` fuera de git; búsqueda de llaves en el repo y su historial en cada auditoría (`gitleaks` todavía no está instalado) |
 
 ### Checklist antes del Demo Day
 
-- [ ] Ningún dato personal en la cadena, en los logs ni en el repo
-- [ ] Pruebas negativas del contrato: doble registro, doble cobro, firma inválida, credencial revocada, verificador no autorizado
-- [ ] Llaves del verificador y del admin fuera del repo
-- [ ] Dependencias revisadas (`cargo audit`, `npm audit`)
-- [ ] Limitaciones documentadas con honestidad: privacidad entre programas (requiere ZK post-cuántico) y el secreto de la huella centralizado en el MVP
+- [x] Pruebas negativas del contrato (33 en `contracts/uno/src/test.rs`):
+  - doble registro: `sybil_misma_huella_dos_veces`, `llave_reutilizada`;
+  - doble cobro: `doble_cobro_rechazado`, `reemision_no_permite_cobrar_doble`;
+  - firma inválida: `suplantacion_firma_de_otra_llave`, `reenviar_reclamo_a_otra_cuenta_u_otro_programa`;
+  - credencial revocada: `credencial_revocada_no_cobra`, `m04_revocacion_del_admin_queda_bloqueada`;
+  - verificador no autorizado: `verificador_no_autorizado`, `a01_programa_solo_acepta_sus_verificadores`;
+  - además: caducidad del reclamo (`b03_reclamo_caduca`) y la firma que exige cada función (`b02_*`).
+- [ ] Ningún dato personal en la cadena, en los logs ni en el repo. No hay prueba que lo cubra; las auditorías no encontraron datos personales en la cadena ni en el repo, pero falta revisar los logs del backend de Punto Uno y del relayer, que todavía no existen.
+- [ ] Llaves del verificador y del admin fuera del repo. No hay prueba que lo cubra; las auditorías revisaron el repo y todo el historial de git sin encontrar llaves. Falta automatizarlo (`gitleaks`).
+- [ ] Dependencias revisadas: `npm audit` ya se corrió (0 altas en producción); falta `cargo audit`, que nunca se ha corrido.
+- [ ] Limitaciones documentadas con honestidad: privacidad entre programas (M-05) y el secreto de la huella centralizado ya están en [docs/contrato.md](docs/contrato.md); falta repetirlas en el pitch.
 
 ---
 
