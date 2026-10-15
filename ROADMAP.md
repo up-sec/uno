@@ -36,47 +36,54 @@ Personajes ficticios del demo:
 
 ```mermaid
 flowchart LR
-  subgraph Celular["App de María (PWA)"]
-    K[Llaves post-cuánticas]
-    S[Genera sello y firma]
+  subgraph Navegador["Frontend Next.js (frontend/)"]
+    O[Organización]
+    A[Auditoría pública]
+    P[Punto Uno: vista previa]
+    B[Beneficiario: vista previa]
   end
-  subgraph Verificador["Backend Punto Uno (Node/TS)"]
-    V[Revisión simulada de INE]
-    F[Firma ML-DSA de la credencial]
-  end
+  W[Wallet: Freighter, xBull, Lobstr, Albedo, Hana]
+  R[Nodo RPC público]
   subgraph Stellar["Stellar testnet"]
-    C[(Contrato Soroban: Uno)]
-    T[Token MXN-demo]
+    C[(Contrato Uno v1.1)]
+    T[SAC de MXNDEMO]
   end
-  O[Panel de la Fundación]
-  A[Vista de auditor y Modo Día Q]
 
-  K --> V --> F --> C
-  S --> C
-  O --> C
-  C --> T --> Celular
-  A --> C
+  O -- firma --> W
+  O --> R
+  A -- simulación, sin firma --> R
+  R --> C
+  C --> T
 ```
 
-| Capa | Tecnología | Responsabilidad |
-|---|---|---|
-| Contrato | Rust + Soroban SDK + `stellar-cli` | Registro de verificadores y credenciales, programas, sellos usados, pagos |
-| Backend | Node.js + TypeScript + `@stellar/stellar-sdk` + `@noble/post-quantum` | Simular el Punto Uno, firmar credenciales, patrocinar comisiones (fee sponsorship) |
-| Frontend | React (Vite) + Tailwind, como PWA | 4 vistas: App ciudadano, Panel Punto Uno, Panel Fundación, Auditor/Día Q |
-| Token | Activo de Stellar emitido por nosotros: `MXN-demo` | Simular pesos digitales en testnet |
-| Datos | Sin base de datos con datos personales | Lo único persistente vive en Stellar y en el celular |
+### Hecho
 
-### Funciones del contrato (MVP)
+| Capa | Estado |
+|---|---|
+| Contrato | Uno v1.1 (`version()` = 2) en testnet: `CCPJ3LQOWC3NAJYV77FO74HKELG7YXJ4ANMSALXKHGIKAJJ6FXFQDMQQ`. Rust + `soroban-sdk` 28.0.0. 33 pruebas en `contracts/uno/src/test.rs`. La v0 (`CCLD6…YGLAG`) quedó obsoleta. |
+| Funciones | Admin: `propose_admin`, `accept_admin`, `cancel_admin_proposal`, `upgrade`, `freeze_upgrades`, `add_verifier`, `remove_verifier`, `allow_token`, `disallow_token`, `unlock`. Credenciales: `issue`, `revoke`, `credential`, `is_registered`. Programas: `create_program`, `close_program`, `program`, `claim`, `claim_message`, `has_claimed`. Detalle en [docs/contrato.md](docs/contrato.md). |
+| Cobro | El celular firma con Ed25519 `"UNO-CLAIM-v2" ‖ contrato ‖ program_id ‖ expires_ledger ‖ dest`. Ya no hay sello: el cobro doble lo impide `Claimed(programa, huella)` y el reclamo caduca en máximo ~1 día. La verificación de firma está aislada en una sola función para cambiarla a post-cuántica. |
+| Token | MXNDEMO, activo clásico con su SAC (`CAKQX…DW2HZ`), aprobado con `allow_token`. |
+| Frontend | Next.js 16 + `@stellar/stellar-sdk` 17 + Stellar Wallets Kit, con bindings generados del contrato. Organización: crear programa, depositar, seguir cobros y cerrar. Auditoría pública sin wallet. Punto Uno y Beneficiario solo como vista previa deshabilitada. |
+| Datos | Sin base de datos ni datos personales: todo vive en el contrato. |
 
-| Función | Quién la llama | Qué hace |
-|---|---|---|
-| `init(admin)` | Admin | Configura el contrato |
-| `add_verifier(pubkey)` / `remove_verifier` | Admin | Autoriza o retira un Punto Uno |
-| `issue(credential, verifier_sig)` | Backend del verificador | Registra huella de unicidad + llave pública del titular; rechaza si la huella ya existe |
-| `revoke(credential_id)` | Verificador | Revoca una credencial (celular perdido o fraude) |
-| `create_program(org, token, amount, max_claims)` | Organización | Crea un programa y recibe los fondos |
-| `claim(program_id, credential_id, seal, signature, payout)` | App del ciudadano (vía backend que paga la comisión) | Verifica y paga; marca el sello como usado |
-| `stats(program_id)` | Cualquiera | Pagos realizados, fondos restantes |
+### Siguiente
+
+| Pieza | Qué falta |
+|---|---|
+| Backend de Punto Uno | Ruta de servidor que reciba la CURP, calcule `HMAC(secreto, CURP)` y firme `issue` con la cuenta del verificador. El secreto nunca va en `NEXT_PUBLIC_` ni en el repo. |
+| App del beneficiario | Generar y guardar la llave en el dispositivo y firmar `claim_message`. |
+| Relayer | Enviar el reclamo firmado y pagar la comisión (fee bump). |
+| Cuenta de recepción | Trustline a MXNDEMO para el beneficiario, idealmente con sponsored reserves. |
+| Firma post-cuántica | Decidir la opción de la sección 3 y documentarla en ADR-001 (pendiente). |
+
+### Antes de mainnet
+
+- **A-03:** desplegar un build verificado con su hash publicado antes de `freeze_upgrades`.
+- **A-04:** timelock en `upgrade` con admin multifirma, o desplegar sin upgrade.
+- **M-06:** cuota o espera por verificador y monitoreo de reemisiones.
+- **A-01 y M-02** siguen parciales; M-05 (vinculación entre programas) es una limitación conocida.
+- Admin multifirma y solo tokens sin clawback ni comisiones (ver [docs/contrato.md](docs/contrato.md)).
 
 ---
 
@@ -120,42 +127,30 @@ Se resuelve en un **spike de 1 día** al inicio de la Semana 3.
 
 ---
 
-## 5. Plan por semanas
+## 5. Plan
 
 > Fechas tentativas; ajustar al calendario oficial del bootcamp y a la fecha del Demo Day.
 
-### Semana 2 (hasta el 4 de octubre): definición
+### Hecho
 
-- [x] Problem Brief (`docs/semana1/`)
-- [ ] Entregable 2: Product Blueprint
-- [ ] Este roadmap en el repo
+- [x] Semana 1: Problem Brief (`docs/semana1/`).
+- [x] Semana 2: Product Blueprint (`docs/semana2/`) y este roadmap.
+- [x] Contrato v0 en testnet (12-oct) y auditoría v0.
+- [x] Contrato v1 (13-oct) y v1.1 (14-oct) con los arreglos de las auditorías; upgrade en testnet sin cambiar el Contract ID.
+- [x] Pruebas negativas del contrato: doble registro, doble cobro, firma inválida, credencial revocada, verificador no autorizado y más (33 pruebas).
+- [x] Semana 3 (Entregable 3): frontend con Inicio, Organización y Auditoría pública. El programa #0 se creó en testnet desde la interfaz (14-oct).
+- [x] Auditorías del frontend e integral (14-oct); F-01 a F-05, R-01 y R-02 corregidos.
 
-### Semana 3 (5–11 de octubre): el corazón funcionando
+### Siguiente
 
-| Día | Tarea | Hito |
+| Semana | Tarea | Hito |
 |---|---|---|
-| 1 | Entorno: Rust, `stellar-cli`, Node, Freighter; cuentas de testnet con Friendbot; emitir `MXN-demo` | "Hola mundo" desplegado en testnet |
-| 2 | Spike de firmas post-cuánticas → ADR-001 | Opción A, B o C elegida |
-| 3–5 | Contrato v0: verificadores, credenciales, programas, `claim`, con pruebas unitarias | Pruebas en verde |
-| 6–7 | Scripts de terminal que corren las escenas 2 a 7 contra testnet | **Flujo completo por terminal, sin interfaz** |
+| 4 (12–18 de octubre) | Backend de Punto Uno, app del beneficiario y relayer | **Flujo completo en el navegador: registro, cobro y rechazo del doble cobro** |
+| 5 (19–25 de octubre) | Modo Día Q (escena 8); pulir UI y textos; **congelar features**; video de respaldo del demo; guion del pitch y ensayos | Pitch de 3–5 minutos ensayado |
 
-### Semana 4 (12–18 de octubre): producto en el navegador
+### Antes de mainnet
 
-| Días | Tarea | Hito |
-|---|---|---|
-| 1–2 | Backend del Punto Uno: emisión de credenciales firmadas y patrocinio de comisiones | API funcionando |
-| 3–5 | Frontend: App ciudadano (llaves, credencial, reclamar), Panel Punto Uno, Panel Fundación | Las 3 vistas conectadas |
-| 6–7 | Vista de auditor + integración de punta a punta | **Demo completo en el navegador, aunque feo** |
-
-### Semana 5 (19–25 de octubre): seguridad, Día Q y pitch
-
-| Días | Tarea | Hito |
-|---|---|---|
-| 1–2 | Revisión de seguridad con el checklist + pruebas negativas | Checklist completo |
-| 3 | Modo Día Q | Escena 8 funcionando |
-| 4 | Pulir UI y textos; **congelar features** | Nada nuevo a partir de aquí |
-| 5 | Grabar video de respaldo del demo (plan B si falla la red) | Video listo |
-| 6–7 | Guion del pitch y ensayos cronometrados | Pitch de 3–5 minutos ensayado |
+Fuera del Demo Day. Son los pendientes de la sección 2 (A-03, A-04, M-06, admin multifirma) y el checklist de la sección 4.
 
 ---
 

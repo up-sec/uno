@@ -1,10 +1,5 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. WALLET · Hook useWallet
-//
-// Estado de la conexión para toda la página: dirección conectada y si la
-// wallet está en la red correcta.
-// ─────────────────────────────────────────────────────────────────────────────
+// Estado de la wallet: dirección conectada y si está en la red correcta.
 import { useCallback, useEffect, useState } from "react";
 import {
   connectWallet,
@@ -23,7 +18,6 @@ export function useWallet() {
   const [network, setNetwork] = useState<NetworkStatus>("checking");
   const [ready, setReady] = useState(false); // ¿ya intentamos restaurar la sesión?
 
-  // Al cargar la página: restaurar la sesión anterior (si hay).
   useEffect(() => {
     restoreWallet().then((saved) => {
       setAddress(saved);

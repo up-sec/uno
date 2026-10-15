@@ -1,12 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. ARQUITECTURA · Configuración de red
-//
-// Toda la información sobre "a qué Stellar nos conectamos" vive aquí.
-// Para pasar de Testnet a Mainnet solo se cambian las variables de entorno
-// (.env.local en tu compu, "Environment Variables" en Vercel).
-//
-// Todo lo que está aquí es PÚBLICO: termina en el navegador. Nunca llaves.
-// ─────────────────────────────────────────────────────────────────────────────
+// Configuración de red. Para cambiar de red solo se cambian las variables NEXT_PUBLIC_.
+// Todo lo de aquí es PÚBLICO (termina en el navegador): nunca llaves.
 import { Networks, StrKey } from "@stellar/stellar-sdk";
 import { networks } from "uno";
 
@@ -61,7 +54,7 @@ if (env.NEXT_PUBLIC_STELLAR_NETWORK === "testnet" && env.NEXT_PUBLIC_UNO_CONTRAC
 export const stellarConfig = Object.freeze({
   /** Nombre de la red: "testnet" */
   network: env.NEXT_PUBLIC_STELLAR_NETWORK!,
-  /** Nodo RPC: el "puente" HTTP entre la app y la blockchain */
+  /** URL del nodo RPC */
   rpcUrl: env.NEXT_PUBLIC_STELLAR_RPC_URL!,
   /** Identifica la red al firmar: una firma de Testnet no sirve en Mainnet */
   networkPassphrase: env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE!,

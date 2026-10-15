@@ -1,10 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. ERRORES · De error técnico a mensaje humano
-//
-// Los errores llegan de muchos lados (wallet, RPC, contrato) y en formatos
-// distintos. mapError() los traduce a algo que el usuario entienda y pueda
-// resolver. El detalle técnico se guarda para mostrarlo aparte.
-// ─────────────────────────────────────────────────────────────────────────────
+// Traduce errores de la wallet, el RPC y el contrato a mensajes para la persona.
 import { explorerTxUrl, tokenConfig } from "@/config/stellar";
 
 export type TxErrorKind =
@@ -12,7 +6,6 @@ export type TxErrorKind =
   | "network" // la wallet está en otra red
   | "rejected" // la red no aceptó la transacción al enviarla
   | "failed" // la red la aceptó, pero falló al ejecutarse
-  | "timeout" // no llegó la confirmación a tiempo
   | "pending"; // ya se firmó y se envió, pero no sabemos si entró: NO reintentar a ciegas
 
 export class TxError extends Error {
@@ -110,7 +103,7 @@ export function mapError(error: unknown): FriendlyError {
   if (kind === "simulation")
     return { title: "El contrato rechazó la operación", message: "La simulación falló, así que no se pidió ninguna firma ni se gastó nada.", detail };
 
-  if (kind === "timeout" || has(/timeout|timed out|Waited \d+ seconds|Failed to fetch|Network Error|ECONN|50[234]/i))
+  if (has(/timeout|timed out|Waited \d+ seconds|Failed to fetch|Network Error|ECONN|50[234]/i))
     return { title: "La red no respondió", message: "El nodo RPC tardó demasiado o no está disponible. Prueba de nuevo en unos segundos.", action: "retry", explorerUrl, detail };
 
   // "failed" es definitivo: la red la procesó y falló, así que no se movió dinero.

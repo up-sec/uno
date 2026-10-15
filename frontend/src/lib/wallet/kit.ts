@@ -1,10 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. WALLET · Setup de Stellar Wallets Kit
-//
-// El kit nos da UNA sola API para muchas wallets (Freighter, xBull, Lobstr…).
-// La app nunca ve claves privadas: solo pide la dirección y le pide a la
-// wallet que firme. Las claves no salen de la wallet.
-// ─────────────────────────────────────────────────────────────────────────────
+// Configuración de Stellar Wallets Kit: una sola API para varias wallets.
+// La app nunca ve llaves privadas.
 import type { StellarWalletsKit } from "@creit-tech/stellar-wallets-kit/sdk";
 import { stellarConfig } from "@/config/stellar";
 
@@ -47,7 +42,7 @@ export function loadKit(): Promise<Kit> {
         new AlbedoModule(),
         new HanaModule(),
       ],
-      network: stellarConfig.networkPassphrase as never, // Testnet
+      network: stellarConfig.networkPassphrase as never,
       theme: {
         ...SwkAppDarkTheme, // mismo look monocromo que la app
         background: "#101010",

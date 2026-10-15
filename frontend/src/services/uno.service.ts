@@ -1,10 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. INVOCAR EL CONTRATO · Servicio del contrato Uno
-//
-// Las reglas de cada llamada al contrato: qué se lee, cómo se escribe y qué
-// errores salen. No sabe nada de React, así que se puede usar desde un hook,
-// un script o un test.
-// ─────────────────────────────────────────────────────────────────────────────
+// Llamadas al contrato Uno: lecturas, escrituras y revisión de transacciones. Sin React.
 import { rpc, type contract } from "@stellar/stellar-sdk";
 import type { Program } from "uno";
 import { explorerTxUrl } from "@/config/stellar";
@@ -15,9 +9,7 @@ import { TxError } from "./errors";
 export type { Program };
 
 // ── Lectura ──────────────────────────────────────────────────────────────────
-// Leer NO necesita firma ni cuesta nada: el nodo RPC SIMULA la llamada
-// (ejecuta el contrato "en seco", sin guardar nada en la blockchain).
-// Por eso la auditoría pública funciona sin conectar wallet.
+// Leer es una simulación: no necesita firma ni wallet.
 
 /** Datos públicos de un programa. Lanza "Error(Contract, #6)" si no existe. */
 export async function readProgram(programId: number): Promise<Program> {
@@ -32,12 +24,6 @@ export async function readProgram(programId: number): Promise<Program> {
 }
 
 // ── Escritura ────────────────────────────────────────────────────────────────
-// Crear o cerrar un programa mueve dinero, así que hace falta una transacción
-// FIRMADA. El ciclo completo:
-//
-//   1. construir → 2. simular → 3. firmar → 4. enviar → 5. esperar confirmación
-//   └─ client.create_program() ─┘ └ tx.sign() ┘ └────── tx.send() ──────┘
-//
 // Firmamos y enviamos por separado (no con signAndSend) para conocer el hash
 // ANTES de enviar: si después la red no confirma a tiempo, la app puede revisar
 // esa transacción en lugar de pedir otra firma (auditoría integral, F-01).
@@ -136,6 +122,8 @@ export type TxCheck<T> =
   | { status: "pendiente" } // todavía no aparece y aún podría entrar
   | { status: "no-llego" }; // no aparece y ya caducó: nunca va a entrar
 
+const CLOCK_MARGIN_S = 60;
+
 /**
  * Estado real de una transacción enviada. `method` es la función del contrato
  * que se llamó, para traducir lo que devolvió.
@@ -160,5 +148,3 @@ export async function checkTransaction<T>(
   const now = Date.now() / 1000;
   return validUntil !== undefined && now > validUntil + CLOCK_MARGIN_S ? { status: "no-llego" } : { status: "pendiente" };
 }
-
-const CLOCK_MARGIN_S = 60;

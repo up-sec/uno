@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" className="h-full" suppressHydrationWarning>
       <head>
-        {/* Satoshi (Fontshare): grotesca limpia y legible */}
+        {/* Satoshi (Fontshare) */}
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
         <link
           rel="stylesheet"

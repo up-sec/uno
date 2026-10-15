@@ -1,6 +1,6 @@
-//! Uno v1 — credencial de unicidad + programas de apoyo en Stellar (Soroban).
+//! Uno v1.1 (VERSION 2) — credencial de unicidad + programas de apoyo en Stellar (Soroban).
 //!
-//! Idea en una frase: un verificador autorizado registra que "esta persona (huella)
+//! Un verificador autorizado registra que "esta persona (huella)
 //! es real y única" y le asocia la llave pública de su celular; después, la persona
 //! puede cobrar UNA sola vez en cada programa, firmando el reclamo con esa llave.
 //!
@@ -297,7 +297,7 @@ fn load_program(env: &Env, id: u32) -> Result<Program, Error> {
 }
 
 /// ÚNICO lugar donde se revisa la firma del celular. Hoy es Ed25519; cuando
-/// se cambie a una firma post-cuántica (ADR-001) solo se toca esta función.
+/// se cambie a una firma post-cuántica (ADR-001, pendiente) solo se toca esta función.
 /// Si la firma no es válida, el host de Soroban detiene la transacción.
 fn verificar_firma_titular(env: &Env, holder: &BytesN<32>, msg: &Bytes, sig: &BytesN<64>) {
     env.crypto().ed25519_verify(holder, msg, sig);

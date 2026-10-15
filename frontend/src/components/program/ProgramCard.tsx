@@ -24,7 +24,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function ProgramDetails({ programId, program }: { programId: number; program: Program }) {
+function ProgramDetails({ programId, program }: { programId: number; program: Program }) {
   const symbol = program.token === tokenConfig.id ? tokenConfig.symbol : "";
   const amount = BigInt(program.amount);
   const remainingPeople = program.cap - program.claimed;

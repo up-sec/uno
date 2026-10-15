@@ -2,7 +2,7 @@
 import { closeProgram, createProgram, type Confirmed } from "@/services/uno.service";
 import { useTransaction } from "./useTransaction";
 
-export { isBusy, type TxState } from "./useTransaction";
+export { isBusy } from "./useTransaction";
 
 /** Crea un programa (devuelve su número) y expone el estado de la transacción. */
 export function useCreateProgram(onConfirmed?: (result: Confirmed<number>) => void) {

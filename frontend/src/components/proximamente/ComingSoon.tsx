@@ -49,7 +49,7 @@ export function PuntoUnoView() {
         <TextInput placeholder="XXXX000000XXXXXX00" />
       </Field>
       <Field label="Llave pública del celular" hint="La genera la app del beneficiario.">
-        <TextInput placeholder="Clave Ed25519 (32 bytes en hex)" className="font-mono" />
+        <TextInput placeholder="Llave Ed25519 (32 bytes en hex)" className="font-mono" />
       </Field>
       <PrimaryButton type="button">Emitir credencial</PrimaryButton>
     </ComingSoonShell>

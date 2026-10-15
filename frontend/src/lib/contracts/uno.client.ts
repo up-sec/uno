@@ -1,11 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. CONTRATO · Cliente generado con bindings
-//
-// `uno` lo generó la Stellar CLI a partir del contrato desplegado (npm run bindings):
-//   stellar contract bindings typescript --contract-id <UNO> --network testnet --output-dir ./packages/uno
-// Trae un método tipado por cada función del contrato
-// (create_program, program, close_program, claim…): no armamos las llamadas a mano.
-// ─────────────────────────────────────────────────────────────────────────────
+// Cliente del contrato generado por la Stellar CLI (npm run bindings, en packages/uno).
 import { Client } from "uno";
 import { stellarConfig } from "@/config/stellar";
 

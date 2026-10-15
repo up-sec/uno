@@ -2,7 +2,7 @@
 
 **Nombre:** Ángel Uriel Prado Zamora
 
-**Usuario de GitHub:** [COMPLETAR: tu usuario de GitHub]
+**Usuario de GitHub:** [up-sec](https://github.com/up-sec)
 
 ---
 

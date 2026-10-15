@@ -1,11 +1,8 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. INVOCAR EL CONTRATO · Servicio del token MXNDEMO
-//
+// Servicio del token MXNDEMO.
 // MXNDEMO es un activo clásico de Stellar con su contrato SAC. Aquí solo LEEMOS
 // el saldo (simulación, sin firma) para avisar antes de crear un programa si a
 // la organización le falta la trustline o el dinero.
 // No generamos bindings del token: basta con una llamada a `balance`.
-// ─────────────────────────────────────────────────────────────────────────────
 import { Account, Address, Contract, TransactionBuilder, rpc, scValToNative } from "@stellar/stellar-sdk";
 import { stellarConfig, tokenConfig } from "@/config/stellar";
 import { getRpcServer } from "@/lib/contracts/rpc";

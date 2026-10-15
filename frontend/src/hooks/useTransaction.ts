@@ -1,17 +1,12 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. ESTADOS · Máquina de estados de una transacción
+// Máquina de estados de una transacción:
 //
 //   idle → simulando → esperando-firma → enviando → confirmado
 //                 ╲            ╲             ╲
 //                  ╰────────────┴─────────────┴──→ error
 //
-// En cada momento la transacción está en UN solo estado, y la interfaz
-// muestra exactamente ese estado. Nada de varios booleanos sueltos.
-//
 // Si el error llega en "enviando", la transacción ya está firmada y pudo haber
 // entrado: no se ofrece "Reintentar" sino "Revisar estado" (auditoría integral, F-01).
-// ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useRef, useState } from "react";
 import { explorerTxUrl } from "@/config/stellar";
 import { mapError, type FriendlyError } from "@/services/errors";

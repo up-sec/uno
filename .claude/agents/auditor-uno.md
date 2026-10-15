@@ -28,20 +28,20 @@ Uriel es estudiante de Ingeniería en Seguridad Informática. Escríbele en **es
 6. Si el código no coincide con el contexto descrito aquí (por ejemplo, sigue siendo v0), dilo al inicio del reporte y audita el código real.
 7. Si te pasan una auditoría anterior, compara: di qué hallazgos quedaron arreglados, cuáles siguen abiertos y cuáles son nuevos.
 
-## Contexto del sistema v1 (modelo de confianza)
+## Contexto del sistema v1.1 (`VERSION` = 2, modelo de confianza)
 
 - **Admin:**
-  - Agrega y quita verificadores (`add_verifier` / `remove_verifier`).
+  - Agrega y quita verificadores (`add_verifier` / `remove_verifier`). Cada verificador tiene una **época** (`VerifierInfo.epoch`) que sube en cada alta; quitarlo lo marca inactivo sin borrarlo. Una credencial solo vale si se emitió en la época actual de su verificador (M-04), así que darlo de alta otra vez no revive credenciales viejas.
   - Administra la lista blanca de tokens (`allow_token` / `disallow_token`).
   - Puede revocar cualquier credencial con `revoke`; cuando la revoca el admin, la credencial queda **bloqueada** (`locked = true`). Solo el admin la desbloquea con `unlock`.
-  - Se cambia en dos pasos: `propose_admin` (admin actual) y `accept_admin` (nuevo admin).
+  - Se cambia en dos pasos: `propose_admin` (admin actual) y `accept_admin` (nuevo admin). La propuesta caduca a los ~7 días (`ADMIN_PROPOSAL_TTL`, error `AdminProposalExpired`) y el admin la puede retirar con `cancel_admin_proposal` (B-04).
   - Puede actualizar el código del contrato (`upgrade`) hasta que llame `freeze_upgrades`; después ya nadie puede. La bandera es `DataKey::UpgradesFrozen` en storage de instancia.
   - Sigue siendo un punto de falla: debe ser una cuenta multifirma.
-- **Verificador (Punto Uno):** comprueba a la persona y llama `issue(huella, holder)`. Se confía en que la huella sea HMAC(secreto, CURP) honesto. No puede reemitir una credencial bloqueada.
-- **Organización:** crea programas con `create_program`. Solo puede usar un token de la lista blanca, deposita amount × cap y define la **lista de verificadores aceptados** del programa (máximo `MAX_PROGRAM_VERIFIERS` = 10). Cierra con `close_program`, que le devuelve el sobrante.
+- **Verificador (Punto Uno):** comprueba a la persona y llama `issue(verifier, huella, holder)`. Se confía en que la huella sea HMAC(secreto, CURP) honesto. No puede reemitir una credencial bloqueada.
+- **Organización:** crea programas con `create_program`. Solo puede usar un token de la lista blanca, deposita amount × cap y define la **lista de verificadores aceptados** del programa (máximo `MAX_PROGRAM_VERIFIERS` = 10). `create_program` mide el saldo del contrato antes y después del depósito y rechaza con `InsufficientDeposit` si llegó menos de amount × cap (M-02). Cierra con `close_program`, que le devuelve el sobrante.
 - **Beneficiario:** no tiene wallet. Su celular firma con Ed25519 el mensaje `"UNO-CLAIM-v2" || contrato || program_id || expires_ledger || dest`. **Ya no hay sello**: el anti-replay viene de `Claimed(program_id, huella)` y de la caducidad `expires_ledger` (a lo más `MAX_CLAIM_TTL` = 1 día hacia adelante).
 - **Relayer:** cualquiera puede enviar `claim`. El permiso viene de la firma, no de quien envía la transacción.
-- La firma está aislada en `verificar_firma_titular()` para cambiarla después a post-cuántica (ADR-001).
+- La firma está aislada en `verificar_firma_titular()` para cambiarla después a post-cuántica (ADR-001, pendiente).
 
 ## Invariantes que deben cumplirse siempre
 
@@ -111,6 +111,7 @@ Uriel es estudiante de Ingeniería en Seguridad Informática. Escríbele en **es
 - Que el secreto HMAC nunca esté en el repo ni en variables `NEXT_PUBLIC_`.
 - Que el relayer no pueda alterar `dest` ni `expires_ledger`.
 - Que el `.gitignore` cubra `.stellar/`, `.env*` y llaves.
+- El frontend ya existe (`frontend/`, Next.js): revisa que nunca maneje llaves, que solo use variables `NEXT_PUBLIC_` públicas, que `config/stellar.ts` valide red, passphrase y Contract IDs, y que una transacción ya enviada no se reintente a ciegas (F-01).
 
 **Dependencias**
 - Si está instalado, corre `cargo audit`.

@@ -103,7 +103,7 @@ Un contrato propio es lo mínimo que hace falta para que la regla "una persona, 
 
 | Integrante | Rol | Aportes |
 |---|---|---|
-| **Ángel Uriel Prado Zamora** ([up-sec](https://github.com/up-sec)) | Trabajo individual: todos los roles | **Contrato:** diseño e implementación de Uno en Soroban (v0, v1 y v1.1), 33 pruebas automáticas, despliegue y upgrade en testnet. **Auditorías:** tres rondas de auditoría del contrato y revisión de seguridad del frontend ([docs/auditorias](../auditorias/)). **Frontend:** aplicación Next.js con cinco pantallas, integración con Freighter y bindings del contrato. **Documentación:** Problem Brief, Product Blueprint, documentación técnica del contrato ([contrato.md](../contrato.md)) y este documento. |
+| **Ángel Uriel Prado Zamora** ([up-sec](https://github.com/up-sec)) | Trabajo individual: todos los roles | **Contrato:** diseño e implementación de Uno en Soroban (v0, v1 y v1.1), 33 pruebas automáticas, despliegue y upgrade en testnet. **Auditorías:** cuatro rondas de auditoría del contrato (v0, v1, v1.1 e integral) y revisión de seguridad del frontend ([docs/auditorias](../auditorias/)). **Frontend:** aplicación Next.js con cinco pantallas, integración con Freighter y bindings del contrato. **Documentación:** Problem Brief, Product Blueprint, documentación técnica del contrato ([contrato.md](../contrato.md)) y este documento. |
 
 ---
 

@@ -1,5 +1,11 @@
 # Uno
 
+Credencial de unicidad sobre Stellar: las organizaciones que reparten apoyos pagan **una sola vez a cada persona real**, sin guardar su INE ni su CURP.
+
+- [Contrato, seguridad y auditorías](docs/contrato.md)
+- [Documentación del frontend (Entregable 3)](docs/semana3/Documentacion.md)
+- [Roadmap](ROADMAP.md)
+
 ## Requisitos
 
 - **Rust** (estable) con el target de Soroban: `rustup target add wasm32v1-none`.
