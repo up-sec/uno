@@ -14,6 +14,7 @@ import { Dot, GhostButton, TextInput } from "@/components/ui";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { NetworkBanner } from "@/components/wallet/NetworkBanner";
 import type { Confirmed } from "@/services/uno.service";
+import { BeneficiaryLink } from "./BeneficiaryLink";
 import { CloseProgramPanel } from "./CloseProgramPanel";
 import { CreateProgramForm } from "./CreateProgramForm";
 
@@ -94,6 +95,7 @@ export function OrganizacionView() {
             ) : (
               <>
                 <ProgramCard programId={shownId} state={program.state} onRefresh={program.refresh} />
+                {program.state.status === "ok" && program.state.program.open && <BeneficiaryLink programId={shownId} />}
                 {/* Solo la organización dueña puede cerrar, y solo si sigue abierto. */}
                 {program.state.status === "ok" && program.state.program.open && program.state.program.org === wallet.address && (
                   <CloseProgramPanel
