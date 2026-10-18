@@ -4,6 +4,7 @@ Credencial de unicidad sobre Stellar: las organizaciones que reparten apoyos pag
 
 - [Contrato, seguridad y auditorías](docs/contrato.md)
 - [Documentación del frontend (Entregable 3)](docs/semana3/Documentacion.md)
+- [Backend: Punto Uno, beneficiario y relayer](docs/backend.md)
 - [Roadmap](ROADMAP.md)
 
 ## Requisitos
@@ -25,7 +26,10 @@ npm install
 Copy-Item .env.example .env.local
 ```
 
-`.env.local` solo lleva variables públicas `NEXT_PUBLIC_` (red, RPC y Contract IDs) y no se versiona. Nunca pongas llaves ni secretos ahí.
+`.env.local` no se versiona. Lleva dos grupos de variables (ver `.env.example`):
+
+- **Públicas** (`NEXT_PUBLIC_`): red, RPC y Contract IDs. Terminan en el JavaScript del navegador.
+- **De servidor** (`UNO_HMAC_SECRET`, `VERIFIER_SECRET`, `RELAYER_SECRET`, `PUNTO_UNO_PIN`, `ALLOWED_PROGRAMS`, `MAX_SPONSORED`): solo las leen las rutas `/api`. **Nunca** con prefijo `NEXT_PUBLIC_`. Si falta una o no es válida, el servidor no arranca. Detalles en [docs/backend.md](docs/backend.md).
 
 ## Cómo correrlo
 
