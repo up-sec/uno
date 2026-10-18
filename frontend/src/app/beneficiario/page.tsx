@@ -1,6 +1,6 @@
-import { BeneficiarioView } from "@/components/proximamente/ComingSoon";
+import { BeneficiarioView } from "@/components/beneficiario/BeneficiarioView";
 
-/** Beneficiario: solo interfaz por ahora. */
+/** Beneficiario: genera su llave en el navegador y cobra vía /api/cobro. */
 export default function BeneficiarioPage() {
   return <BeneficiarioView />;
 }
