@@ -40,8 +40,8 @@ Las rutas de servidor viven en `frontend/src/app/api/` y los módulos con secret
 | Variable | Qué es |
 |---|---|
 | `UNO_HMAC_SECRET` | Secreto del HMAC, de 32 caracteres o más (`openssl rand -hex 32`). Si cambia, cambian todas las huellas. |
-| `VERIFIER_SECRET` | Llave S… de la cuenta verificadora (`GALQ…GSBL` en testnet). |
-| `RELAYER_SECRET` | Llave S… del relayer (`GC4J…ZGEY` en testnet). |
+| `VERIFIER_SECRET` | Llave S… de la cuenta verificadora (`verificador2`, `GDBF…M674` en testnet). |
+| `RELAYER_SECRET` | Llave S… del relayer (`relayer2`, `GBOU…CLAB` en testnet). |
 | `PUNTO_UNO_PIN` | PIN del operador, de 16 caracteres o más. |
 | `ALLOWED_PROGRAMS` | Programas atendidos, separados por comas. Por defecto, `0`. |
 | `MAX_SPONSORED` | Tope de cuentas patrocinadas. Por defecto, `25`. |

@@ -10,7 +10,9 @@ import { Contract, Keypair, Networks, TransactionBuilder, nativeToScVal, Address
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const RPC = process.env.NEXT_PUBLIC_STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org";
 const CONTRACT = process.env.NEXT_PUBLIC_UNO_CONTRACT_ID;
-const PROGRAM = Number(process.env.E2E_PROGRAM ?? 0);
+// El primer programa de ALLOWED_PROGRAMS (el mismo default que el servidor: 0).
+const PROGRAM = Number((process.env.ALLOWED_PROGRAMS ?? "0").split(",")[0].trim());
+if (!Number.isInteger(PROGRAM) || PROGRAM < 0) throw new Error("ALLOWED_PROGRAMS no empieza con un número de programa válido");
 const SIM_SOURCE = process.env.NEXT_PUBLIC_DEFAULT_VERIFIER; // cuenta existente, solo para simular
 const PIN = process.env.PUNTO_UNO_PIN;
 if (!PIN || !CONTRACT || !SIM_SOURCE) throw new Error("Faltan variables: corre con --env-file=.env.local");
