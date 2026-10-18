@@ -33,29 +33,6 @@ function ComingSoonShell({ role, title, intro, children, notes }: { role: string
   );
 }
 
-export function PuntoUnoView() {
-  return (
-    <ComingSoonShell
-      role="Punto Uno · verificador"
-      title="Registrar a una persona"
-      intro="El verificador comprueba a la persona en persona y emite su credencial de unicidad en Stellar."
-      notes={[
-        "La CURP se escribe aquí, pero nunca llega a la blockchain: el backend calcula una huella (HMAC) con un secreto que solo vive en el servidor.",
-        "En Stellar solo quedan la huella y la llave pública del celular de la persona (issue).",
-        "Si la persona perdió su celular, el verificador puede revocar y reemitir su credencial sin que pueda cobrar dos veces.",
-      ]}
-    >
-      <Field label="CURP" hint="Se envía al backend para calcular la huella. No se guarda.">
-        <TextInput placeholder="XXXX000000XXXXXX00" />
-      </Field>
-      <Field label="Llave pública del celular" hint="La genera la app del beneficiario.">
-        <TextInput placeholder="Llave Ed25519 (32 bytes en hex)" className="font-mono" />
-      </Field>
-      <PrimaryButton type="button">Emitir credencial</PrimaryButton>
-    </ComingSoonShell>
-  );
-}
-
 export function BeneficiarioView() {
   return (
     <ComingSoonShell

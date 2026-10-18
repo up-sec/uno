@@ -1,6 +1,6 @@
-import { PuntoUnoView } from "@/components/proximamente/ComingSoon";
+import { PuntoUnoView } from "@/components/punto-uno/PuntoUnoView";
 
-/** Punto Uno (verificador): solo interfaz por ahora. */
+/** Punto Uno (verificador): emite credenciales vía /api/registro. */
 export default function PuntoUnoPage() {
   return <PuntoUnoView />;
 }
