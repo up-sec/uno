@@ -16,7 +16,7 @@ import {
   type Transaction,
 } from "@stellar/stellar-sdk";
 import { stellarConfig, tokenConfig } from "@/config/stellar";
-import { getUnoClient } from "@/lib/contracts/uno.client";
+import { buildClaimMessage } from "@/lib/claimMessage";
 import { RESERVES_PER_ACCOUNT, SPONSORSHIP_FEE_PER_OP, SPONSORSHIP_TIMEOUT_S, isMxnDemo, sponsorshipOps } from "@/lib/sponsorship";
 import { serverEnv } from "./env";
 import { ApiError, int, str } from "./http";
@@ -41,8 +41,12 @@ export type SignedClaim = {
 
 /**
  * Lee el reclamo del cuerpo y comprueba, SIN gastar nada, que el programa esté
- * permitido, que no haya caducado y que la firma corresponda al mensaje exacto
- * del contrato (claim_message) para ese programa, caducidad y destino.
+ * permitido, que la firma corresponda al mensaje exacto de claim_message para
+ * ese programa, caducidad y destino, y que no haya caducado.
+ *
+ * Orden (auditoría M-02): todo lo que no necesita red va primero, incluida la
+ * firma, que se verifica contra el mensaje armado localmente. Una petición con
+ * firma inventada se rechaza sin tocar el RPC.
  */
 export async function readSignedClaim(body: Record<string, unknown>): Promise<SignedClaim> {
   const programa = int(body, "programa");
@@ -57,14 +61,15 @@ export async function readSignedClaim(body: Record<string, unknown>): Promise<Si
   const firma = Buffer.from(firmaHex, "hex");
 
   const expires = int(body, "expires");
-  const { sequence } = await rpcServer().getLatestLedger();
-  if (expires < sequence || expires - sequence > MAX_CLAIM_TTL) throw new ApiError(400, "ClaimExpired", "El reclamo firmado ya caducó. Vuelve a intentar.");
 
-  // El mensaje lo arma el propio contrato (simulación, sin firma ni costo).
-  const message = (await getUnoClient().claim_message({ program_id: programa, expires_ledger: expires, dest: destino })).result;
+  const message = buildClaimMessage(stellarConfig.contractId, programa, expires, destino);
   if (!Keypair.fromPublicKey(holder).verify(Buffer.from(message), firma)) {
     throw new ApiError(401, "BadSignature", "La firma no corresponde a este reclamo.");
   }
+
+  // Solo con una firma válida se consulta la red.
+  const { sequence } = await rpcServer().getLatestLedger();
+  if (expires < sequence || expires - sequence > MAX_CLAIM_TTL) throw new ApiError(400, "ClaimExpired", "El reclamo firmado ya caducó. Vuelve a intentar.");
   return { programa, holder, expires, firma, destino };
 }
 
