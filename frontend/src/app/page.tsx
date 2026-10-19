@@ -4,9 +4,15 @@ import { Badge } from "@/components/ui";
 import { explorerAccountUrl, stellarConfig } from "@/config/stellar";
 
 const STEPS = [
-  { title: "Registro", text: "Un Punto Uno verifica a la persona en persona. En Stellar solo queda una huella de unicidad, nunca su CURP." },
+  {
+    title: "Registro",
+    text: "Un Punto Uno (un módulo físico de registro, parecido a un módulo del INE, donde un verificador autorizado comprueba en persona que eres un ser humano real y que la CURP es tuya) verifica a la persona. En Stellar solo queda una huella de unicidad (un código que se calcula a partir de la CURP y del que no se puede recuperar la CURP), nunca la CURP.",
+  },
   { title: "Programa", text: "La organización crea un programa y deposita en el contrato el total: monto por persona × cupo." },
-  { title: "Cobro", text: "La persona firma desde su celular. El contrato paga una sola vez por persona y por programa." },
+  {
+    title: "Cobro",
+    text: "La persona firma desde su celular (con un toque confirma que es ella quien cobra: su celular guarda una llave digital única, como una firma electrónica, que nunca sale del teléfono). El contrato paga una sola vez por persona y por programa.",
+  },
   { title: "Cierre", text: "La organización cierra el programa y recupera lo que no se cobró. Todo queda auditable." },
 ];
 
