@@ -67,14 +67,19 @@ async function checkCanSponsor(claim: SignedClaim): Promise<void> {
   if ((await sponsoredAccounts()) >= serverEnv().maxSponsored) {
     throw new ApiError(503, "SponsorLimit", "El relayer llegó a su tope de cuentas patrocinadas.");
   }
-  // Simular el cobro: con la cuenta inexistente, lo único que puede fallar es el
-  // pago final del token. Cualquier error de Uno (no registrado, ya cobró…) frena.
+  // Simular el cobro. Con la cuenta destino inexistente, lo ÚNICO aceptable es
+  // que falle el pago final del token por falta de trustline (SAC #13; comprobado
+  // en testnet). Todo lo demás frena: errores de Uno, errores desconocidos y
+  // hasta una simulación exitosa, que aquí no tendría sentido (B-01, fail-closed).
   const simulation = (await claimTx(claim)).simulation!;
-  if (rpc.Api.isSimulationError(simulation)) {
-    const code = contractErrorCode(simulation.error);
-    const known = code === undefined || code === 13 ? undefined : CLAIM_ERRORS[code];
-    if (known) throw new ApiError(known.status, known.code, known.message);
+  if (!rpc.Api.isSimulationError(simulation)) {
+    throw new ApiError(409, "SponsorCheckFailed", "No se pudo confirmar que la cuenta necesite patrocinio.");
   }
+  const code = contractErrorCode(simulation.error);
+  if (code === 13 && /trustline/i.test(simulation.error)) return;
+  const known = code === undefined || code === 13 ? undefined : CLAIM_ERRORS[code];
+  if (known) throw new ApiError(known.status, known.code, known.message);
+  throw new ApiError(422, "SponsorCheckFailed", "El cobro no pasaría la simulación; no se creó la cuenta.");
 }
 
 export async function POST(request: Request) {
