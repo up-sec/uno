@@ -39,12 +39,24 @@ Auditoría: [docs/auditorias/2026-10-19-backend.md](auditorias/2026-10-19-backen
 
 ## Limitaciones conocidas
 
-- **Los límites de `/api/registro` viven en memoria y no son confiables en Vercel.** Cada instancia lleva su propio contador (5 por minuto por IP y `MAX_REGISTROS`) y se reinicia sin aviso. El límite real es "por instancia". La IP sale de `x-forwarded-for`, que sin un proxy de confianza controla el cliente. **Antes de un piloto** los contadores pasan a una base de datos o KV compartida, o el PIN único se reemplaza por credenciales por operador con bitácora y cuota (auditoría A-01).
-- **El PIN de Punto Uno es uno solo para todos los operadores.** No identifica a nadie y quien lo tenga puede emitir hasta `MAX_REGISTROS` credenciales con CURP sintéticas válidas.
+- **A-01 queda mitigado, no cerrado.** Ya están el límite de 5 peticiones por minuto por IP (que cuenta los PIN incorrectos) y el tope `MAX_REGISTROS`. Pero:
+  - viven en memoria: cada instancia de Vercel lleva su propio contador y se reinicia en cada arranque en frío, así que el límite real es "por instancia";
+  - el PIN es uno solo para todos los operadores: no identifica a nadie, y quien lo tenga puede emitir credenciales con CURP sintéticas válidas;
+  - la CURP solo se valida por formato y dígito verificador.
+
+  **Para cerrarlo, antes de un piloto**:
+  1. Contadores en una **base de datos o KV compartida**: límite por IP, cuota de registros, patrocinios por llave e `inFlight`.
+  2. **Credenciales por operador** (usuario y contraseña o passkey) en lugar del PIN único, con una bitácora sin datos personales (`{operador, hash de tx, hora}`) y una cuota por operador y por día.
+- **IP del cliente** (auditoría N-03). En Vercel (`VERCEL=1`) se usa `x-vercel-forwarded-for`. Según la [documentación de Vercel](https://vercel.com/docs/headers/request-headers), la plataforma sobrescribe `x-forwarded-for` para evitar spoofing, y `x-vercel-forwarded-for` no la puede pisar un proxy puesto delante. Fuera de Vercel no se confía en ninguna cabecera y el límite es **global** (5 por minuto para todos). Si en Vercel se desactiva "Enable access to System Environment Variables", `VERCEL` no existe y también aplica el límite global. La IP se valida con `net.isIP`. Con más de 10 000 claves se desalojan las más viejas.
 - **Se puede drenar XLM del relayer.** Cada cuenta patrocinada aparta 3 reservas base (unos 1.5 XLM) y cada transacción cuesta una comisión. Una persona registrada de verdad puede generar llaves nuevas y pedir que la registren otra vez, por ejemplo después de una revocación. El tope `MAX_SPONSORED` limita la pérdida máxima a unos `MAX_SPONSORED × 1.5 XLM` más comisiones, pero no la evita. **En mainnet el patrocinio se moverá al registro en Punto Uno**: la cuenta se crea cuando un verificador ya comprobó a la persona en persona, y `/api/cobro` solo envía `claim`.
 - **El registro en memoria de `/api/cobro` no es confiable en Vercel.** `inFlight` vive en la memoria de cada instancia y solo evita envíos duplicados simultáneos dentro de una misma instancia. **La verificación que vale es la de la cadena**: que la cuenta no exista y el conteo de `num_sponsoring`.
 - **B-03: `MAX_SPONSORED` no es atómico.** El tope se lee y luego se actúa. Con N peticiones simultáneas de N llaves registradas distintas se puede rebasar por algunas cuentas (≈1.5 XLM cada una). Las colisiones de secuencia del relayer lo acotan en parte, pero no es un control. Para un piloto: contador atómico en KV o una cola de un solo trabajador.
-- **Carreras de secuencia**: si llegan dos peticiones al mismo tiempo, comparten la cuenta del relayer. Una puede fallar con `tx_bad_seq`, y en el patrocinio con `StaleSequence`. No se mueve dinero y la persona puede reintentar.
+- **Un patrocinio por llave** (auditoría N-02): un contador en memoria rechaza un segundo patrocinio para la misma llave (`AlreadySponsored`) y corta el bucle "crear la cuenta → fusionarla → pedir otra". Como los demás contadores, no es confiable entre instancias.
+- **N-05: el relayer usa una sola cuenta para patrocinar y para cobrar.** Si llegan dos peticiones al mismo tiempo, comparten la secuencia del relayer. Un `claim` puede fallar con `tx_bad_seq`. Cualquier `cobrar` que entre entre `preparar-cuenta` y `crear-cuenta` deja vieja la transacción de patrocinio pendiente (`StaleSequence`, 409). No se mueve dinero y la persona puede reintentar, pero con muchas personas cobrando a la vez será frecuente. **Antes de un piloto el relayer se separa en dos cuentas**:
+  - una que solo patrocina, con saldo pequeño y recargas;
+  - otra que solo envía `claim`.
+
+  Esto también limita el daño de cualquier incidente futuro con una de las dos llaves.
 - **M-03: la llave del beneficiario vive en `localStorage`.**
   - Cualquier script que corra en el mismo origen la puede leer: un XSS futuro o una dependencia comprometida, por ejemplo del wallet kit, que se carga en el mismo sitio. No hay CSP todavía.
   - Si roban el celular desbloqueado, el ladrón cobra en los programas abiertos que la persona no ha cobrado. Mientras no exista una ruta de revocación, hay que revocar con la CLI.
