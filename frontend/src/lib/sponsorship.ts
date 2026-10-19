@@ -56,6 +56,8 @@ export function checkSponsorshipTx(tx: Transaction, beneficiary: string, relayer
   if (tx.memo.type !== "none") return "trae memo";
   const maxTime = Number(tx.timeBounds?.maxTime ?? 0);
   if (maxTime === 0 || maxTime > Date.now() / 1000 + SPONSORSHIP_TIMEOUT_S + 60) return "caducidad inválida";
+  // Ya caducada: la red la rechazaría; no se firma ni se envía (auditoría N-01).
+  if (maxTime <= Date.now() / 1000) return "caducada";
   if (tx.timeBounds?.minTime !== "0") return "minTime distinto de 0";
   // Precondiciones extra (CAP-21): con minAccountSequence alguien podría saltar
   // la secuencia del relayer al máximo y congelar su cuenta (auditoría C-01).
