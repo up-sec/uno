@@ -8,7 +8,10 @@ const STEPS = [
     title: "Registro",
     text: "Un Punto Uno (un módulo físico de registro, parecido a un módulo del INE, donde un verificador autorizado comprueba en persona que eres un ser humano real y que la CURP es tuya) verifica a la persona. En Stellar solo queda una huella de unicidad (un código que se calcula a partir de la CURP y del que no se puede recuperar la CURP), nunca la CURP.",
   },
-  { title: "Programa", text: "La organización crea un programa y deposita en el contrato el total: monto por persona × cupo." },
+  {
+    title: "Programa",
+    text: "La organización crea un programa y deposita en el contrato (un programa en Stellar que guarda el dinero y lo reparte con reglas públicas que nadie puede cambiar) el total: monto por persona × cupo (cuántas personas pueden cobrar).",
+  },
   {
     title: "Cobro",
     text: "La persona firma desde su celular (con un toque confirma que es ella quien cobra: su celular guarda una llave digital única, como una firma electrónica, que nunca sale del teléfono). El contrato paga una sola vez por persona y por programa.",
@@ -19,8 +22,8 @@ const STEPS = [
 const ROLES = [
   { href: "/organizacion", title: "Organización", text: "Crea un programa, deposita y sigue los cobros.", ready: true },
   { href: "/auditoria", title: "Auditoría pública", text: "Revisa cualquier programa sin wallet.", ready: true },
-  { href: "/punto-uno", title: "Punto Uno", text: "Registra personas y emite credenciales.", ready: false },
-  { href: "/beneficiario", title: "Beneficiario", text: "Cobra tu apoyo desde el celular.", ready: false },
+  { href: "/punto-uno", title: "Punto Uno", text: "Registra personas y emite credenciales.", ready: true },
+  { href: "/beneficiario", title: "Beneficiario", text: "Cobra tu apoyo desde el celular.", ready: true },
 ];
 
 /** Inicio: qué es Uno y a dónde ir según tu rol. */

@@ -2,6 +2,12 @@
 
 Credencial de unicidad sobre Stellar: las organizaciones que reparten apoyos pagan **una sola vez a cada persona real**, sin guardar su INE ni su CURP.
 
+## Cómo funciona
+
+1. **Registro.** Un Punto Uno (un módulo físico de registro, parecido a un módulo del INE, donde un verificador autorizado comprueba en persona que eres un ser humano real y que la CURP es tuya) verifica a la persona. En Stellar solo queda una huella de unicidad (un código que se calcula a partir de la CURP y del que no se puede recuperar la CURP), nunca la CURP.
+2. **Programa.** La organización crea un programa y deposita en el contrato (un programa en Stellar que guarda el dinero y lo reparte con reglas públicas que nadie puede cambiar) el total: monto por persona × cupo (cuántas personas pueden cobrar).
+3. **Cobro.** La persona firma desde su celular (con un toque confirma que es ella quien cobra: su celular guarda una llave digital única, como una firma electrónica, que nunca sale del teléfono). El contrato paga una sola vez por persona y por programa.
+
 - [Contrato, seguridad y auditorías](docs/contrato.md)
 - [Documentación del frontend (Entregable 3)](docs/semana3/Documentacion.md)
 - [Backend: Punto Uno, beneficiario y relayer](docs/backend.md)
