@@ -22,6 +22,13 @@ export const RESERVES_PER_ACCOUNT = 3;
 /** Máxima vida de la transacción de patrocinio. */
 export const SPONSORSHIP_TIMEOUT_S = 120;
 
+/** Comisión por operación (stroops) y total: 4 operaciones. Fija, para que nadie la infle (M-01). */
+export const SPONSORSHIP_FEE_PER_OP = 1000;
+export const SPONSORSHIP_FEE_TOTAL = SPONSORSHIP_FEE_PER_OP * 4;
+
+/** Límite por defecto de change_trust (el máximo de un i64 con 7 decimales). */
+export const MAX_TRUST_LIMIT = "922337203685.4775807";
+
 /** ¿Este activo clásico es el que respalda el token MXNDEMO (su contrato SAC)? */
 export function isMxnDemo(asset: Asset): boolean {
   return !asset.isNative() && asset.contractId(stellarConfig.networkPassphrase) === tokenConfig.id;
@@ -49,6 +56,15 @@ export function checkSponsorshipTx(tx: Transaction, beneficiary: string, relayer
   if (tx.memo.type !== "none") return "trae memo";
   const maxTime = Number(tx.timeBounds?.maxTime ?? 0);
   if (maxTime === 0 || maxTime > Date.now() / 1000 + SPONSORSHIP_TIMEOUT_S + 60) return "caducidad inválida";
+  if (tx.timeBounds?.minTime !== "0") return "minTime distinto de 0";
+  // Precondiciones extra (CAP-21): con minAccountSequence alguien podría saltar
+  // la secuencia del relayer al máximo y congelar su cuenta (auditoría C-01).
+  if (tx.minAccountSequence !== undefined || tx.minAccountSequenceAge !== undefined || tx.minAccountSequenceLedgerGap !== undefined) {
+    return "trae precondiciones de secuencia";
+  }
+  if (tx.ledgerBounds !== undefined) return "trae ledgerBounds";
+  if (tx.extraSigners !== undefined && tx.extraSigners.length > 0) return "trae extraSigners";
+  if (Number(tx.fee) !== SPONSORSHIP_FEE_TOTAL) return "comisión distinta de la fija";
 
   const ops = tx.operations;
   if (ops.length !== 4) return "número de operaciones distinto de 4";
@@ -56,7 +72,7 @@ export function checkSponsorshipTx(tx: Transaction, beneficiary: string, relayer
   // Las dos primeras usan la fuente de la transacción (relayer): sin `source` propio.
   if (begin.type !== "beginSponsoringFutureReserves" || begin.source || begin.sponsoredId !== beneficiary) return "operación 1 inesperada";
   if (create.type !== "createAccount" || create.source || create.destination !== beneficiary || Number(create.startingBalance) !== 0) return "operación 2 inesperada";
-  if (trust.type !== "changeTrust" || trust.source !== beneficiary || !(trust.line instanceof Asset) || !isMxnDemo(trust.line)) return "operación 3 inesperada";
+  if (trust.type !== "changeTrust" || trust.source !== beneficiary || !(trust.line instanceof Asset) || !isMxnDemo(trust.line) || trust.limit !== MAX_TRUST_LIMIT) return "operación 3 inesperada";
   if (end.type !== "endSponsoringFutureReserves" || end.source !== beneficiary) return "operación 4 inesperada";
   return null;
 }

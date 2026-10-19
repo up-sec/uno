@@ -2,6 +2,7 @@
 // Nunca elige el programa ni el destino: los toma del reclamo que firmó el
 // beneficiario, y lo comprueba antes de gastar nada.
 import "server-only";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import {
   Asset,
   BASE_FEE,
@@ -16,7 +17,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { stellarConfig, tokenConfig } from "@/config/stellar";
 import { getUnoClient } from "@/lib/contracts/uno.client";
-import { RESERVES_PER_ACCOUNT, SPONSORSHIP_TIMEOUT_S, isMxnDemo, sponsorshipOps } from "@/lib/sponsorship";
+import { RESERVES_PER_ACCOUNT, SPONSORSHIP_FEE_PER_OP, SPONSORSHIP_TIMEOUT_S, isMxnDemo, sponsorshipOps } from "@/lib/sponsorship";
 import { serverEnv } from "./env";
 import { ApiError, int, str } from "./http";
 
@@ -114,13 +115,45 @@ async function mxnDemoAsset(): Promise<Asset> {
   return asset;
 }
 
-/** Transacción de patrocinio sin firmas, con el relayer como fuente. */
+/**
+ * Transacción de patrocinio sin firmas, armada SOLO aquí: el relayer como
+ * fuente, su siguiente secuencia, comisión fija, caducidad corta y ninguna
+ * precondición extra. Lo que se co-firma después debe ser idéntico (C-01).
+ */
 export async function buildSponsorshipTx(beneficiary: string): Promise<Transaction> {
   const asset = await mxnDemoAsset();
   const relayer = await rpcServer().getAccount(serverEnv().relayer.publicKey());
-  const builder = new TransactionBuilder(relayer, { fee: String(Number(BASE_FEE) * 10), networkPassphrase: stellarConfig.networkPassphrase });
+  const builder = new TransactionBuilder(relayer, { fee: String(SPONSORSHIP_FEE_PER_OP), networkPassphrase: stellarConfig.networkPassphrase });
   for (const op of sponsorshipOps(beneficiary, asset)) builder.addOperation(op);
   return builder.setTimeout(SPONSORSHIP_TIMEOUT_S).build();
+}
+
+// ── Token de la transacción de patrocinio (auditoría C-01) ───────────────────
+// Sin estado: token = HMAC(K, hash de la transacción que armó el servidor). El
+// hash cubre TODO (fuente, secuencia, comisión, caducidad, precondiciones,
+// operaciones y red), así que solo se co-firma exactamente lo que se armó aquí.
+// K se deriva de la llave del relayer con una etiqueta propia: es distinta de
+// UNO_HMAC_SECRET y es la misma en todas las instancias del servidor.
+
+function tokenKey(): Buffer {
+  return createHash("sha256").update("uno-sponsorship-token-v1").update(serverEnv().relayer.rawSecretKey()).digest();
+}
+
+/** Token que acompaña a la transacción armada en preparar-cuenta. */
+export function sponsorshipToken(tx: Transaction): string {
+  return createHmac("sha256", tokenKey()).update(tx.hash()).digest("hex");
+}
+
+/** ¿El token corresponde exactamente a esta transacción? (tiempo constante) */
+export function isSponsorshipTokenValid(tx: Transaction, token: string): boolean {
+  if (!/^[0-9a-f]{64}$/.test(token)) return false;
+  return timingSafeEqual(Buffer.from(sponsorshipToken(tx), "hex"), Buffer.from(token, "hex"));
+}
+
+/** Respaldo: la secuencia debe ser exactamente la siguiente del relayer. */
+export async function isNextRelayerSequence(tx: Transaction): Promise<boolean> {
+  const relayer = await rpcServer().getAccount(serverEnv().relayer.publicKey());
+  return BigInt(tx.sequence) === BigInt(relayer.sequenceNumber()) + BigInt(1);
 }
 
 /** Envía una transacción clásica ya firmada y espera a que se confirme. */

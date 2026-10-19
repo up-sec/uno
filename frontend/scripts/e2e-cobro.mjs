@@ -81,7 +81,7 @@ if (!prep.data.xdr) { console.log("2. preparar-cuenta →", prep.status, prep.da
 const tx = TransactionBuilder.fromXDR(prep.data.xdr, Networks.TESTNET);
 console.log("   operaciones:", tx.operations.map((o) => o.type).join(" → "));
 tx.sign(kp);
-const cuenta = await post("/api/cobro", { paso: "crear-cuenta", ...claim, xdr: tx.toXDR() });
+const cuenta = await post("/api/cobro", { paso: "crear-cuenta", ...claim, xdr: tx.toXDR(), token: prep.data.token });
 console.log("2. Cuenta patrocinada →", cuenta.status, cuenta.data.hash ?? `${cuenta.data.error}: ${cuenta.data.message}`);
 if (!cuenta.data.hash) process.exit(1);
 

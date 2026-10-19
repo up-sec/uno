@@ -70,13 +70,13 @@ export async function cobrar(keypair: Keypair, programa: number, onStep: (step: 
   let cuentaHash: string | undefined;
   if (!(await accountExists(cuenta))) {
     onStep("creando-cuenta");
-    const { xdr } = await postApi<{ xdr: string }>("/api/cobro", { paso: "preparar-cuenta", ...claim });
+    const { xdr, token } = await postApi<{ xdr: string; token: string }>("/api/cobro", { paso: "preparar-cuenta", ...claim });
     const tx = TransactionBuilder.fromXDR(xdr, stellarConfig.networkPassphrase);
     // No se firma nada que no sea exactamente "crear MI cuenta y aceptar MXNDEMO".
     const problem = tx instanceof Transaction ? checkSponsorshipTx(tx, cuenta) : "no es una transacción normal";
     if (problem) throw new Error(`El servidor mandó una transacción inesperada (${problem}); no se firmó.`);
     tx.sign(keypair);
-    ({ hash: cuentaHash } = await postApi<{ hash: string }>("/api/cobro", { paso: "crear-cuenta", ...claim, xdr: tx.toXDR() }));
+    ({ hash: cuentaHash } = await postApi<{ hash: string }>("/api/cobro", { paso: "crear-cuenta", ...claim, xdr: tx.toXDR(), token }));
   }
 
   onStep("cobrando");

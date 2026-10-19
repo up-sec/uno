@@ -3,9 +3,10 @@
 // Pasos (campo "paso"); los tres traen el reclamo firmado por el beneficiario
 // { programa, holder, expires, firma, destino }, que se verifica cada vez:
 //   - "preparar-cuenta": si la cuenta destino no existe, devuelve la transacción
-//     de patrocinio SIN firmar para que el navegador la revise y la co-firme.
-//   - "crear-cuenta": { xdr } co-firmada por el beneficiario. Se valida que sea
-//     exactamente la esperada, el relayer firma y se envía.
+//     de patrocinio SIN firmar + un token (HMAC de su hash) para que el navegador
+//     la revise y la co-firme.
+//   - "crear-cuenta": { xdr, token } co-firmada por el beneficiario. Solo se firma
+//     si el hash es idéntico al de la transacción que armó el servidor (C-01).
 //   - "cobrar": simula claim y SOLO si pasa, el relayer lo envía.
 //
 // Límites contra abuso:
@@ -21,7 +22,17 @@ import { stellarConfig } from "@/config/stellar";
 import { checkSponsorshipTx, hasSignatureOf } from "@/lib/sponsorship";
 import { serverEnv } from "@/server/env";
 import { ApiError, errorResponse, readJson, str } from "@/server/http";
-import { accountExists, buildSponsorshipTx, readSignedClaim, sponsoredAccounts, submitClassic, type SignedClaim } from "@/server/relayer";
+import {
+  accountExists,
+  buildSponsorshipTx,
+  isNextRelayerSequence,
+  isSponsorshipTokenValid,
+  readSignedClaim,
+  sponsoredAccounts,
+  sponsorshipToken,
+  submitClassic,
+  type SignedClaim,
+} from "@/server/relayer";
 import { contractErrorCode, simulateSignSend, unoClientFor, type ContractErrors } from "@/server/stellar";
 
 const CLAIM_ERRORS: ContractErrors = {
@@ -76,11 +87,10 @@ export async function POST(request: Request) {
     if (paso === "preparar-cuenta") {
       await checkCanSponsor(claim);
       const tx = await buildSponsorshipTx(claim.holder);
-      return Response.json({ xdr: tx.toXDR() });
+      return Response.json({ xdr: tx.toXDR(), token: sponsorshipToken(tx) });
     }
 
     if (paso === "crear-cuenta") {
-      await checkCanSponsor(claim);
       let tx: Transaction;
       try {
         const parsed = TransactionBuilder.fromXDR(str(body, "xdr"), stellarConfig.networkPassphrase);
@@ -89,9 +99,20 @@ export async function POST(request: Request) {
       } catch {
         throw new ApiError(400, "BadXdr", "La transacción no es válida.");
       }
+      // C-01: solo se co-firma la transacción EXACTA que armó este servidor. El
+      // token es un HMAC de su hash; cualquier cambio (secuencia, comisión,
+      // precondiciones, operaciones) cambia el hash y el token deja de valer.
+      if (!isSponsorshipTokenValid(tx, str(body, "token"))) {
+        throw new ApiError(400, "BadSponsorshipTx", "La transacción no es la que armó el servidor.");
+      }
+      // Respaldo por si el token fallara: la forma exacta y las precondiciones.
       const problem = checkSponsorshipTx(tx, claim.holder, env.relayer.publicKey());
       if (problem) throw new ApiError(400, "BadSponsorshipTx", `La transacción no es la esperada: ${problem}.`);
-      if (!hasSignatureOf(tx, claim.holder)) throw new ApiError(400, "MissingSignature", "Falta la firma del beneficiario.");
+      if (tx.signatures.length !== 1 || !hasSignatureOf(tx, claim.holder)) {
+        throw new ApiError(400, "MissingSignature", "La transacción debe traer solo la firma del beneficiario.");
+      }
+      await checkCanSponsor(claim);
+      if (!(await isNextRelayerSequence(tx))) throw new ApiError(409, "StaleSequence", "La transacción ya no es vigente. Vuelve a intentar.");
 
       inFlight.add(claim.holder);
       try {
