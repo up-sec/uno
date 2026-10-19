@@ -9,6 +9,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import { serverEnv } from "@/server/env";
 import { huellaDeCurp, isValidCurp, normalizeCurp } from "@/server/huella";
 import { ApiError, errorResponse, readJson, str } from "@/server/http";
+import { allowRequest, clientIp } from "@/server/rateLimit";
 import { simulateSignSend, unoClientFor, type ContractErrors } from "@/server/stellar";
 
 const ISSUE_ERRORS: ContractErrors = {
@@ -25,9 +26,23 @@ function pinMatches(given: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
+/** Peticiones por IP por minuto, contando también los PIN incorrectos (A-01). */
+const REGISTRO_LIMIT = 5;
+const REGISTRO_WINDOW_MS = 60_000;
+
+/**
+ * Credenciales emitidas (o en proceso) por ESTA instancia. En memoria: en Vercel
+ * cada instancia lleva su propia cuenta y se reinicia, así que no es un tope
+ * confiable. Antes de un piloto va a una base de datos o a un PIN por operador.
+ */
+let registros = 0;
+
 export async function POST(request: Request) {
   try {
     const env = serverEnv();
+    if (!allowRequest(`registro:${clientIp(request)}`, REGISTRO_LIMIT, REGISTRO_WINDOW_MS)) {
+      throw new ApiError(429, "TooManyRequests", "Demasiados intentos. Espera un minuto.");
+    }
     const body = await readJson(request);
 
     if (!pinMatches(str(body, "pin"), env.puntoUnoPin)) {
@@ -41,12 +56,22 @@ export async function POST(request: Request) {
     const llave = str(body, "llave").trim();
     if (!StrKey.isValidEd25519PublicKey(llave)) throw new ApiError(400, "BadKey", "La llave pública debe ser una cuenta G… válida.");
 
-    const tx = await unoClientFor(env.verifier).issue(
-      { verifier: env.verifier.publicKey(), huella: huellaDeCurp(curp), holder: Buffer.from(StrKey.decodeEd25519PublicKey(llave)) },
-      { timeoutInSeconds: 30 },
-    );
-    const hash = await simulateSignSend(tx, ISSUE_ERRORS);
-    return Response.json({ hash });
+    // Se aparta el lugar antes de enviar para que dos peticiones simultáneas no
+    // rebasen el tope; si la emisión falla, se libera.
+    if (registros >= env.maxRegistros) throw new ApiError(503, "RegistroLimit", "Este Punto Uno llegó a su tope de registros.");
+    registros++;
+    try {
+      const tx = await unoClientFor(env.verifier).issue(
+        { verifier: env.verifier.publicKey(), huella: huellaDeCurp(curp), holder: Buffer.from(StrKey.decodeEd25519PublicKey(llave)) },
+        { timeoutInSeconds: 30 },
+      );
+      const hash = await simulateSignSend(tx, ISSUE_ERRORS);
+      return Response.json({ hash });
+    } catch (error) {
+      // Un envío dudoso ("Pending") pudo entrar: se sigue contando, por las dudas.
+      if (!(error instanceof ApiError && error.code === "Pending")) registros--;
+      throw error;
+    }
   } catch (error) {
     return errorResponse("registro", error);
   }

@@ -23,6 +23,8 @@ export type ServerEnv = {
   allowedPrograms: ReadonlySet<number>;
   /** Tope global de cuentas que el relayer patrocina (contado en cadena). */
   maxSponsored: number;
+  /** Tope de credenciales que emite este servidor (contado en memoria, ver rateLimit.ts). */
+  maxRegistros: number;
 };
 
 const MIN_HMAC_SECRET = 32;
@@ -65,6 +67,9 @@ function load(): ServerEnv {
   const maxText = process.env.MAX_SPONSORED ?? "25";
   if (!/^\d{1,6}$/.test(maxText)) throw new Error("MAX_SPONSORED debe ser un número entero (ej. 25)");
 
+  const maxRegistrosText = process.env.MAX_REGISTROS ?? "20";
+  if (!/^\d{1,6}$/.test(maxRegistrosText)) throw new Error("MAX_REGISTROS debe ser un número entero (ej. 20)");
+
   return {
     hmacSecret,
     verifier,
@@ -72,6 +77,7 @@ function load(): ServerEnv {
     puntoUnoPin,
     allowedPrograms: new Set(programs.map(Number)),
     maxSponsored: Number(maxText),
+    maxRegistros: Number(maxRegistrosText),
   };
 }
 
