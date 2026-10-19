@@ -44,10 +44,21 @@ async function claimMessage(expires, dest) {
   return Buffer.from(scValToNative(sim.result.retval));
 }
 
+/**
+ * Firma Ed25519 → 128 caracteres hex (el formato que exige /api/cobro).
+ * En SDK 17 Keypair.sign devuelve Uint8Array: su toString("hex") ignora el
+ * argumento y da "218,110,…"; por eso se pasa por Buffer.from.
+ */
+function signatureHex(signature) {
+  const hex = Buffer.from(signature).toString("hex");
+  if (!/^[0-9a-f]{128}$/.test(hex)) throw new Error("La firma no quedó en 128 caracteres hex");
+  return hex;
+}
+
 async function signedClaim(kp) {
   const { sequence } = await server.getLatestLedger();
   const expires = sequence + 720;
-  const firma = kp.sign(await claimMessage(expires, kp.publicKey())).toString("hex");
+  const firma = signatureHex(kp.sign(await claimMessage(expires, kp.publicKey())));
   return { programa: PROGRAM, holder: kp.publicKey(), expires, firma, destino: kp.publicKey() };
 }
 

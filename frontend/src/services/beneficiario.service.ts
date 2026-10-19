@@ -31,8 +31,15 @@ export function loadOrCreateKey(): Keypair | null {
 export type CobroStep = "firmando" | "creando-cuenta" | "cobrando";
 export type CobroResult = { cuentaHash?: string; cobroHash: string };
 
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+/**
+ * Firma Ed25519 → 128 caracteres hex (el formato que exige /api/cobro).
+ * No se usa `.toString("hex")`: Keypair.sign devuelve Uint8Array, que ignora
+ * el argumento y produciría "218,110,…".
+ */
+function signatureHex(signature: Uint8Array): string {
+  const hex = Array.from(signature, (b) => b.toString(16).padStart(2, "0")).join("");
+  if (!/^[0-9a-f]{128}$/.test(hex)) throw new Error("La firma no quedó en 128 caracteres hex; no se envió nada.");
+  return hex;
 }
 
 async function accountExists(address: string): Promise<boolean> {
@@ -58,7 +65,7 @@ export async function cobrar(keypair: Keypair, programa: number, onStep: (step: 
   const { sequence } = await getRpcServer().getLatestLedger();
   const expires = sequence + CLAIM_TTL_LEDGERS;
   const message = (await getUnoClient().claim_message({ program_id: programa, expires_ledger: expires, dest: cuenta })).result;
-  const claim = { programa, holder: cuenta, expires, firma: toHex(keypair.sign(message)), destino: cuenta };
+  const claim = { programa, holder: cuenta, expires, firma: signatureHex(keypair.sign(message)), destino: cuenta };
 
   let cuentaHash: string | undefined;
   if (!(await accountExists(cuenta))) {
