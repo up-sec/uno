@@ -51,6 +51,27 @@ const CLAIM_ERRORS: ContractErrors = {
 /** Cuentas en proceso de creación en ESTA instancia (no confiable entre instancias). */
 const inFlight = new Set<string>();
 
+/**
+ * Patrocinios ya hechos por llave (auditoría N-02): evita el bucle "crear la
+ * cuenta → fusionarla → pedir patrocinio otra vez". En memoria, con el mismo
+ * límite que el resto: no es confiable entre instancias de Vercel; para un
+ * piloto va a una base de datos o KV compartida.
+ */
+const MAX_SPONSORSHIPS_PER_KEY = 1;
+const MAX_TRACKED_KEYS = 10_000;
+const sponsorshipsByKey = new Map<string, number>();
+
+function recordSponsorship(holder: string): void {
+  const count = (sponsorshipsByKey.get(holder) ?? 0) + 1;
+  sponsorshipsByKey.delete(holder);
+  sponsorshipsByKey.set(holder, count);
+  // Se desalojan las más viejas; las llaves solo llegan aquí con credencial válida.
+  for (const key of sponsorshipsByKey.keys()) {
+    if (sponsorshipsByKey.size <= MAX_TRACKED_KEYS) break;
+    sponsorshipsByKey.delete(key);
+  }
+}
+
 function claimTx(claim: SignedClaim) {
   return unoClientFor(serverEnv().relayer).claim(
     { program_id: claim.programa, holder: Buffer.from(StrKey.decodeEd25519PublicKey(claim.holder)), expires_ledger: claim.expires, signature: claim.firma, dest: claim.destino },
@@ -63,6 +84,9 @@ async function checkCanSponsor(claim: SignedClaim): Promise<void> {
   // Solo se patrocina la cuenta de la propia llave que firmó: ella co-firma.
   if (claim.destino !== claim.holder) throw new ApiError(400, "BadDestination", "Solo se crea la cuenta de la llave que firma el reclamo.");
   if (inFlight.has(claim.holder)) throw new ApiError(429, "InProgress", "Ya se está creando esta cuenta.");
+  if ((sponsorshipsByKey.get(claim.holder) ?? 0) >= MAX_SPONSORSHIPS_PER_KEY) {
+    throw new ApiError(409, "AlreadySponsored", "Ya se patrocinó una cuenta para esta llave.");
+  }
   if (await accountExists(claim.holder)) throw new ApiError(409, "AccountExists", "La cuenta ya existe: cobra directamente.");
   if ((await sponsoredAccounts()) >= serverEnv().maxSponsored) {
     throw new ApiError(503, "SponsorLimit", "El relayer llegó a su tope de cuentas patrocinadas.");
@@ -122,7 +146,13 @@ export async function POST(request: Request) {
       inFlight.add(claim.holder);
       try {
         tx.sign(env.relayer);
-        return Response.json({ hash: await submitClassic(tx) });
+        const hash = await submitClassic(tx);
+        recordSponsorship(claim.holder);
+        return Response.json({ hash });
+      } catch (error) {
+        // Un envío dudoso pudo entrar: se cuenta, por las dudas.
+        if (error instanceof ApiError && error.code === "Pending") recordSponsorship(claim.holder);
+        throw error;
       } finally {
         inFlight.delete(claim.holder);
       }
