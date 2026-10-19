@@ -17,10 +17,61 @@ export class ApiError extends Error {
 
 const MAX_BODY_BYTES = 4096;
 
-/** Lee un cuerpo JSON pequeño. No devuelve ni registra el texto si es inválido. */
+/**
+ * Solo peticiones del propio sitio (auditoría B-02). Un navegador SIEMPRE manda
+ * Origin en un POST entre sitios, así que:
+ *   - con Origin, su host debe ser el de este servidor;
+ *   - sin Origin, se rechaza si el navegador dice que no es del mismo origen
+ *     (Sec-Fetch-Site). Clientes sin navegador (curl, el script e2e) no mandan
+ *     ninguno de los dos y no pueden montar un CSRF.
+ */
+function checkOrigin(request: Request): void {
+  const host = request.headers.get("host");
+  const origin = request.headers.get("origin");
+  if (origin !== null) {
+    let originHost: string | null = null;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      // "null" u otro valor no válido
+    }
+    if (!host || originHost !== host) throw new ApiError(403, "BadOrigin", "Origen no permitido.");
+    return;
+  }
+  const site = request.headers.get("sec-fetch-site");
+  if (site !== null && site !== "same-origin" && site !== "none") throw new ApiError(403, "BadOrigin", "Origen no permitido.");
+}
+
+/** Lee el cuerpo con tope en BYTES, sin bajar más de lo permitido. */
+async function readLimited(request: Request): Promise<string> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > MAX_BODY_BYTES) throw new ApiError(413, "TooLarge", "La petición es demasiado grande.");
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new ApiError(413, "TooLarge", "La petición es demasiado grande.");
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
+/**
+ * Lee un cuerpo JSON pequeño del propio sitio. Exige Content-Type
+ * application/json y un tope de bytes. No devuelve ni registra el texto si es inválido.
+ */
 export async function readJson(request: Request): Promise<Record<string, unknown>> {
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) throw new ApiError(413, "TooLarge", "La petición es demasiado grande.");
+  checkOrigin(request);
+  const type = request.headers.get("content-type") ?? "";
+  if (!/^application\/json(\s*;|$)/i.test(type)) throw new ApiError(415, "BadContentType", "La petición debe ser application/json.");
+  const text = await readLimited(request);
   let body: unknown;
   try {
     body = JSON.parse(text);
