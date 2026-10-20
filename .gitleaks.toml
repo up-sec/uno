@@ -12,3 +12,15 @@ id = "stellar-secret-seed"
 description = "Stellar secret seed (S...)"
 regex = '''\bS[A-Z2-7]{55}\b'''
 tags = ["stellar", "secret-key"]
+
+# Falso positivo: NEXT_PUBLIC_MXNDEMO_TOKEN_ID es el Contract ID (C...) del token
+# MXNDEMO, público por diseño (va al navegador), no una llave. Solo se excluye
+# esa variable en ese archivo, para generic-api-key, y solo si su valor tiene
+# forma de Contract ID; una seed S... ahí seguiría detectándose.
+[[allowlists]]
+description = "Contract ID público de MXNDEMO en frontend/.env.example"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^frontend/\.env\.example$''']
+regexTarget = "line"
+regexes = ['''\bNEXT_PUBLIC_MXNDEMO_TOKEN_ID=C[A-Z2-7]{55}\b''']
