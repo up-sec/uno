@@ -1,0 +1,31 @@
+#!/bin/sh
+# Corre gitleaks sobre los commits que se van a subir. Bloquea el push si
+# encuentra secretos o si gitleaks no está instalado.
+# Activar con: git config core.hooksPath .githooks
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-push: gitleaks no está instalado; push bloqueado." >&2
+  echo "Instálalo desde https://github.com/gitleaks/gitleaks/releases" >&2
+  exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Borrado de rama remota: no hay nada que escanear.
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  case "$remote_sha" in
+    *[!0]*) range="$remote_sha..$local_sha" ;;
+    # Rama nueva: solo los commits que aún no están en ningún remoto.
+    *) range="$local_sha --not --remotes" ;;
+  esac
+
+  if ! gitleaks git "$root" --config "$root/.gitleaks.toml" \
+      --log-opts="$range" --redact --no-banner; then
+    echo "pre-push: gitleaks encontró posibles secretos en $local_ref; push bloqueado." >&2
+    exit 1
+  fi
+done
+
+exit 0

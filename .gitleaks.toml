@@ -1,0 +1,14 @@
+title = "Uno gitleaks config"
+
+# Reglas por defecto de gitleaks + reglas propias del proyecto.
+[extend]
+useDefault = true
+
+# Seed secreta de Stellar (StrKey ed25519 privada): "S" + 55 caracteres base32.
+# Equivale a ^S[A-Z2-7]{55}$ aplicado a una palabra completa; se usa \b porque
+# gitleaks escanea fragmentos de varias líneas, no valores aislados.
+[[rules]]
+id = "stellar-secret-seed"
+description = "Stellar secret seed (S...)"
+regex = '''\bS[A-Z2-7]{55}\b'''
+tags = ["stellar", "secret-key"]

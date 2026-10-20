@@ -37,6 +37,12 @@ Copy-Item .env.example .env.local
 - **Públicas** (`NEXT_PUBLIC_`): red, RPC y Contract IDs. Terminan en el JavaScript del navegador.
 - **De servidor** (`UNO_HMAC_SECRET`, `VERIFIER_SECRET`, `RELAYER_SECRET`, `PUNTO_UNO_PIN`, `ALLOWED_PROGRAMS`, `MAX_SPONSORED`): solo las leen las rutas `/api`. **Nunca** con prefijo `NEXT_PUBLIC_`. Si falta una o no es válida, el servidor no arranca. Detalles en [docs/backend.md](docs/backend.md).
 
+**Escaneo de secretos antes de cada push.** El hook `.githooks/pre-push` corre [gitleaks](https://github.com/gitleaks/gitleaks) (8.30 o más reciente) con `.gitleaks.toml` (reglas por defecto + semillas secretas de Stellar `S...`) sobre los commits que se van a subir, y bloquea el push si encuentra algo o si gitleaks no está instalado. Actívalo una vez por clon, desde la raíz del repo:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
 ## Cómo correrlo
 
 **Frontend** (desde `frontend/`):
