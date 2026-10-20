@@ -26,7 +26,7 @@ Semana 4 (12–19 de octubre de 2026). Esta semana el flujo quedó completo en t
 - **Costo del relayer.** Medido en la prueba de hoy: el patrocinio costó 0.00004 XLM de comisión más **1.5 XLM de reservas** que quedan apartadas mientras exista la cuenta, y el cobro 0.049 XLM. El registro (0.18 XLM) lo paga el verificador. A escala, las reservas dominan: 1,000 beneficiarios ≈ 1,500 XLM inmovilizados. Lo acotan `MAX_SPONSORED` y un patrocinio por llave; en mainnet el patrocinio pasará al registro en Punto Uno.
 - **Todo está en testnet.** El token es MXNDEMO, un activo de prueba sin valor, y el contrato todavía se puede actualizar (`freeze_upgrades` pendiente). Nada de esto es dinero real.
 
-## Plan de validación
+## Plan de validación con usuarios
 
 Estas tres hipótesis se fijan por primera vez en este entregable: los documentos anteriores tenían la hipótesis general del Problem Brief y los supuestos S1–S3, pero no estas métricas.
 
