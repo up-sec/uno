@@ -68,4 +68,4 @@ Estas tres hipótesis se fijan por primera vez en este entregable: los documento
   - Cobro (`claim`, relayer2): [c9454cdc2149a10ef661b40986fae3582a4ff666be357f0e8330dda60b90c5c4](https://stellar.expert/explorer/testnet/tx/c9454cdc2149a10ef661b40986fae3582a4ff666be357f0e8330dda60b90c5c4)
   - Segundo cobro: rechazado en la simulación con `AlreadyClaimed`, así que no se envió ninguna transacción ni existe un hash.
 - **Auditoría del backend:** [docs/auditorias/2026-10-19-backend.md](../auditorias/2026-10-19-backend.md)
-- **Video:** (pendiente)
+- **Video (YouTube):** https://youtu.be/yb2ChZxCGKo
